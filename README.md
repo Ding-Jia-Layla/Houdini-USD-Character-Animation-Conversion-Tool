@@ -1,47 +1,108 @@
 # Msc Project
+USD rigging & animation(maya2Unreal)
+## 23/06/2024
 
-## 3D animation pipeline
+### LINK:
+-https://nccastaff.bournemouth.ac.uk/jmacey/post/USDSchema/USDSchema/#:~:text=A%20USD%20Schema%20is%20a,own%20data%20into%20a%20pipeline.
 
-modeling --> rigging --> texturing + lookdev --> animating --> simulating --> effects --> lighting --> rendering --> compositing
+- https://docs.omniverse.nvidia.com/dev-guide/latest/index.html
+- https://www.bilibili.com/read/cv11411037/
+- openUSD: 
+    -   https://zhuanlan.zhihu.com/p/437422802
+    -   http://blog.christianlb.io/building-usd-on-windows-for-python-3
+    
+## 26/06/2024
+Nvidia pre-built USD installation:
+- download the python3.7 version USD pre-built source.
+- set the env virable: 
+    - https://openusd.org/release/tut_usd_tutorials.html#environment-setup
+    - add the `.../pip-package` in `$PYTHONPATH`(so you can use modules like PySide2...)
+- run the example usd file.
 
-https://discourse.techart.online/t/questions-to-film-td-guys/2304/11
+## 01/07/2024
 
-## VFX pipeline
+https://fereria.github.io/reincarnation_tech/usd/python/usdskel
 
-<img src="ff03d808d54cb23f495ba33e645dae7.png" alt="vfxPipeline" width="100" height = "20%"/>
+https://www.reddit.com/r/Maya/comments/1anuo76/im_looking_for_help_exporting_a_rigged_model_as_a/
 
-awesome: https://github.com/cgwire/awesome-cg-vfx-pipeline
+https://openusd.org/dev/api/_usd_skel__intro.html
 
-## current choice
-- USD 块：
-    - https://dl.acm.org/doi/10.1145/3450623.3464663
-## Idea list
+https://docs.omniverse.nvidia.com/kit/docs/pxr-usd-api/latest/pxr/UsdSkel.html
 
-- 优化图像：
-    - https://yiweihu.netlify.app/project/hu2022control/
-    - https://github.com/yiwei-hu/Controlling-Material-Appearance-by-Examples?tab=readme-ov-file
-- 变形 GSDeformer + VR
-    - Goal: write a VR-based UI for GSDeformer, where the user can manipulate trained 3DGS scenes using GSDeformer or even draw new cages for it 
-    - Estimated Difficulty: 
-        - Easy 4-6 weeks
-        - no major technical challenges in sight
-    - Would need to know(or learn):
-        - How to write a VR app using Unity
-        - Roughly know how 3D Gaussian Splatting works
-        - Roughly know how GSDeformer works
-    - Milestones:
-        - 3DGS VR Viewer
-        - Add Cage Display
-        - Vertex-based Cage Manipulation (select and move around)
-        - Get GSDeformer to run
-        - (optional) Cage Drawing Tool
+### Reference:
+- 导出骨骼信息:
+    - 遍历 Maya 中的关节层次结构。
+    - 收集每个关节的名称、路径和变换矩阵。
+    - 创建一个 USD 文件，并定义一个 USD Skeleton，其中包括关节名称和变换.
+- 导出网格信息:
+    - 选择和获取一个网格对象的顶点数据。
+    - 创建一个 USD 场景，并定义一个 USD Mesh。
+    - 将网格的顶点、面顶点数量和面顶点索引数据导入到 USD。
 
-    - https://jhuangbu.github.io/gsdeformer/
-- USD 节点图：
-    - https://github.com/1xinghuan/usdNodeGraph
-- USD 块：
-    - https://dl.acm.org/doi/10.1145/3450623.3464663
-## Difficulty so give up
+### Issues
+- 3 files
 
-Generating Procedural Materials from Text or Image Prompts: 
-https://yiweihu.netlify.app/uploads/hu2023gen/project
+## 08/07/2024
+
+### TODO List
+
+- [ ] USD schema example: 
+
+### LINK:
+API for usdSkel:
+https://openusd.org/dev/api/_usd_skel__a_p_i__intro.html
+https://docs.omniverse.nvidia.com/kit/docs/pxr-usd-api/latest/pxr/UsdSkel.html
+https://openusd.org/release/api/_usd_skel__schema_overview.html
+https://fereria.github.io/reincarnation_tech/usd/introduction
+https://dev.epicgames.com/community/learning/tutorials/5wew/usd-workflows-with-maya-unreal-engine
+https://github.com/Autodesk/maya-usd/tree/dev
+https://openusd.org/files/SkinningOM.md.html
+https://zenn.dev/remiria/articles/9ac3e31df4da98ba2f0b
+
+even maya-usd can do some simple export task, but there still a lot of bugs need to be solved, so I use the underlying API to export more stable tools designed for skeletal animation.
+
+binding animation to a skeleton
+```def Skeleton "Skel" (
+        def SkelAnimation "Anim" {
+        }
+        
+        rel skel:animationSource = </Model/Skel/Anim>
+    }
+```
+如果把usda作为资源导入那就会自动拆出来普通的mesh skeleton等，不能保持usda格式
+https://www.youtube.com/watch?v=JVXALXerRbw
+
+
+## 09/07/2024
+
+现在看起来找到的usdskel应该是可以多个DCC直接用的
+
+### LINK:
+blend shape in maya(artist):
+https://www.youtube.com/watch?v=C29DJYBLh_M
+blend shape demo:
+https://users.csc.calpoly.edu/~zwood/teaching/csc572/final15/aacosta/index.html
+
+### TODO List
+- [x] houdini导入usd
+- [ ] character usd
+
+### Analyze
+
+```mermaid
+    flowchart LR
+    a-->b
+    a-->c
+    d-->e
+    d-->f
+    d-->g
+    a["character"]
+    b["keep alive"]
+    c["walk"]
+    d["asset"]
+    e["rig"]
+    f["blend shape"]
+    g["playload"]
+
+
+```
