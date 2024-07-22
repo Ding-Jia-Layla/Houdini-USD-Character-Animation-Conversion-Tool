@@ -46,7 +46,7 @@ https://docs.omniverse.nvidia.com/kit/docs/pxr-usd-api/latest/pxr/UsdSkel.html
 
 ### TODO List
 
-- [ ] USD schema example: 
+- [x] USD schema example: 
 
 ### LINK:
 API for usdSkel:
@@ -83,8 +83,7 @@ https://www.youtube.com/watch?v=C29DJYBLh_M
 blend shape demo:
 https://users.csc.calpoly.edu/~zwood/teaching/csc572/final15/aacosta/index.html
 
-### TODO List
-- [x] houdini导入usd
+
 - [ ] character usd
 
 ### Analyze
@@ -106,3 +105,26 @@ https://users.csc.calpoly.edu/~zwood/teaching/csc572/final15/aacosta/index.html
 
 
 ```
+
+https://github.com/kiryha/Houdini/wiki/Pixar-USD-Python-API
+
+https://github.com/kiryha/Houdini/wiki/python-snippets
+
+https://openusd.org/release/api/usd_skel_page_front.html
+
+- 实例化usdskel:https://openusd.org/release/api/_usd_skel__instancing.html
+- binding API: https://openusd.org/release/api/class_usd_skel_binding_a_p_i.html#details
+- 简单三关节例子：https://openusd.org/dev/api/_usd_skel__schema_overview.html
+- usdskel api:https://openusd.org/dev/api/_usd_skel__a_p_i__intro.html
+- https://openusd.org/docs/api/_usd_skel__schema_overview.html#UsdSkel_SchemaOverview_SkinningAnArm
+
+https://openusd.org/release/api/_usd_skel__a_p_i__intro.html#UsdSkel_API_WritingSkels
+
+
+https://openusd.org/dev/api/_usd_skel__schema_overview.html
+
+
+## 21/07/2024
+### TODO List
+- [x] arm usd
+- [ ]

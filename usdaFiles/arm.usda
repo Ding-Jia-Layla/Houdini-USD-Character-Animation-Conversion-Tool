@@ -45,6 +45,8 @@ def SkelRoot "Model" (
     # Both the binding of the Skeleton, and the specificatin of the
     # weighting primvars necessitates the application of the 
     # SkelBindingAPI schema
+
+}
     def Mesh "Arm" (
         prepend apiSchemas = ["SkelBindingAPI"]
     )
@@ -85,4 +87,3 @@ def SkelRoot "Model" (
        )
        matrix4d primvars:skel:geomBindTransform = ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1))
     }
-}
