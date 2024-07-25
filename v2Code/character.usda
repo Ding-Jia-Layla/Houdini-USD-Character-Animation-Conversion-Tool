@@ -1,0 +1,12 @@
+#usda 1.0
+(
+    defaultPrim = "HumanFemale_Group"
+    upAxis = "Z"
+)
+
+def SkelRoot "HumanFemale_Group" (
+    prepend apiSchemas = ["SkelBindingAPI"]
+)
+{
+}
+
