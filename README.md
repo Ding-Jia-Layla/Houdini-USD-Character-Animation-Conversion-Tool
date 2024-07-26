@@ -23,14 +23,30 @@ USD rigging & animation
 ```
 
 ### TODO List
-- [ ] houdini export usd 
-    - [x] geo(mesh) -py
-    - [ ] rig
-    - [ ] anim
+
+**usd houdini**:
+
+**导入**usd文件会有混合形状在SOP失效的问题
+
+- [ ] usd→SOP(without LOP)
+
+**导出**的话就是
+
+- [ ] (boneDeform)node→usd
+    - [ ] houdini export usd 
+        - [x] geo(mesh) -py
+        - [ ] rig
+        - [ ] anim
+- [ ] fbx(boneDeform)→usd
+    - [ ] houdini export usd 
+        - [x] geo(mesh) -py
+        - [ ] rig
+        - [ ] anim
+- 不管是节点还是fbx最后的节点都是boneDeform，那么从boneDeform开始比较好
+
+
 - [ ] character usd
     - [ ] blend shape `OR` without blend shape
-    - [ ] fbx
-    - [ ] node(last one is boneDeform)
 ### NOTE
 - It can't export animations, so just export mesh, rig and anim(3 files):
     https://www.sidefx.com/forum/topic/95553/?page=1#post-420180
