@@ -29,9 +29,9 @@ USD rigging & animation
     - [ ] anim
 - [ ] character usd
     - [ ] blend shape `OR` without blend shape
-
+    - [ ] fbx
+    - [ ] node(last one is boneDeform)
 ### NOTE
-
 - It can't export animations, so just export mesh, rig and anim(3 files):
     https://www.sidefx.com/forum/topic/95553/?page=1#post-420180
 

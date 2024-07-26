@@ -1,5 +1,5 @@
 import random
-from pxr import Usd, UsdGeom, UsdShade, Gf, Sdf,Kind
+from pxr import Usd, UsdGeom, UsdShade, Gf, Sdf,Kind, UsdSkel
 import hou
 
 node = hou.pwd()
@@ -43,29 +43,41 @@ def get_geometry_data(geometry):
 
     return points, normals, face_vertex_counts, face_vertex_indices
     
-
+def stage_setting(stage):
+    stage.SetDefaultPrim(stage.DefinePrim('/Model', 'Xform'))
+    stage.SetStartTimeCode(1)    
+    #stage.SetDefaultPrim(stage.DefinePrim('/Model', 'SkelRoot'))
+    #stage.SetEndTimeCode(10)
+    stage.SetMetadata('metersPerUnit', 1)
+    stage.SetMetadata('upAxis', 'Y')    
+    skelRootPath = Sdf.Path("/Model")
+    #root = UsdSkel.Root.Define(stage, skelRootPath)
+    root = UsdGeom.Xform.Define(stage, skelRootPath)
+    Usd.ModelAPI(root).SetKind(Kind.Tokens.component)
+    return stage
 def export_geometry(stage, geometry, input_node_name):
     # Get Geometry data
     points, normals, face_vertex_counts, face_vertex_indices = get_geometry_data(geometry)
-    # Create a USD Mesh primitive and set properties
-    root = UsdGeom.Xform.Define(stage, f'/{input_node_name}')
-    Usd.ModelAPI(root).SetKind(Kind.Tokens.component)
-    mesh = UsdGeom.Mesh.Define(stage, f'/{input_node_name}/Mesh')
+    stage = stage_setting(stage)
+    mesh = UsdGeom.Mesh.Define(stage, f'/Model/Mesh')
     setup_mesh(mesh, points, normals, face_vertex_counts, face_vertex_indices)
+def export_skeleton(skeleton):
+    
+    pass
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'
     stage = Usd.Stage.CreateNew(usd_file_path)
-    
-    input_node_name = hou.node('/obj/initPlane')
+    input_node_name = hou.node('/obj/mixamo_character_animated')
     # get the geo node
-    plane_node = input_node_name.node('plane')
-    if plane_node is not None:
-        print(f"Found plane node: {plane_node.name()}")
+    deform_node = input_node_name.node('bonedeform1')
+    if deform_node is not None:
+        print(f"Found plane node: {deform_node.name()}")
     else:
         print("Plane node not found in the geometry node")
-    geometry = plane_node.geometry()
+    geometry = deform_node.geometry()
     # Geometry
     mesh = export_geometry(stage, geometry, input_node_name)
+    skeleton = export_skeleton(stage)
     stage.GetRootLayer().Save()
 
 export_usd()
