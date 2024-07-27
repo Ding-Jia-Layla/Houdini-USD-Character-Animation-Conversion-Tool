@@ -65,29 +65,60 @@ def get_skeleton_data(fbx_node):
     joints = []
     bindTransforms = []
     restTransforms = [] 
-    
+    capt_parents = fbx_node.node('fbx_skin_import1').geometry().intListAttribValue('capt_parents')
+    capt_names = fbx_node.node('fbx_skin_import1').geometry().stringListAttribValue('capt_names')
     # skeleton_capture_name = deform_node.inputs()[0] .type().name()
+    for index, value in enumerate(capt_parents):
+        if value == -1:
+            root_index = index
+            print(f"the index of root is : {root_index}")
+    root_name = capt_names[root_index]
+    capt_dict={}
+    # skeleton dict
+    for index, name in enumerate(capt_names):
+        parent_index = capt_parents[index]
+        if parent_index == -1:
+            parent_name = None
+        else:
+            parent_name = capt_names[parent_index]
+        capt_dict[name] = parent_name
+    # joints<path>
+    # get the topo (structure)
+    # joints path
+    joints_paths={}
+    for joint in capt_dict:
+        current = joint
+        path=[]
+        while current:
+            path.append(current)
+            current = capt_dict[current]
+        joints_paths[joint]='/'.join(reversed(path))
+    for joint,path in joints_paths.items():
+        print(f"{path}")
+        
     child_nodes = fbx_node.children()
     output_sop_nodes = [node for node in child_nodes if node.type().name() == 'output']
+    
     rest_geometry = output_sop_nodes[0]
     capture_pose = output_sop_nodes[1]
     animated_pose = output_sop_nodes[2]
     capture_pose_geo = capture_pose.geometry()
     
     skeleton= capture_pose_geo.points()
-    # 每读一个点就把关节上的属性都塞进结构里
-    # joints<path>
-    # get the topo (structure)
     
+    # mat3: rotate and scale
+    # get the transform matrix: {0,0,0}*capt_xforms
     # bindtransform<matrix4d>
+    
     # resttransform<matrix4d>
     
     # test to get one attr of one point
-    joint_name = skeleton[2].attribValue('name')
-    joint_transform = skeleton[2].floatListAttribValue('transform')
-    print(f"joint name is : {joint_name}")
-    print(f"transform should be found: {joint_transform}")
-    
+    #joint_name = skeleton[2].attribValue('name')
+    #joint_transform = skeleton[2].floatListAttribValue('transform')
+    #print(f"joint name is : {joint_name}")
+    #print(f"transform should be found: {joint_transform}")
+    #print(f"parents relationship: {capt_parents}, relationship count:{len(capt_parents)}")
+    #print(f"joint names:{capt_names}, joints count:{len(capt_names)}")
     return joints
 def export_skeleton(stage,fbx_node):
     # structure of skeleton -- get

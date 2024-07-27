@@ -1,0 +1,30 @@
+capt_names = ["hip", "spine", "chest", "neck", "head"]
+capt_parents = [-1, 0, 1, 2, 3]
+
+skeleton_hierarchy = {}
+
+for index, name in enumerate(capt_names):
+    parent_index = capt_parents[index]
+    if parent_index == -1:
+        parent_name = None  
+    else:
+        parent_name = capt_names[parent_index]
+    skeleton_hierarchy[name] = parent_name
+
+joints_path={}
+for joint in skeleton_hierarchy:
+    path = []
+    current = joint
+    while current:
+        path.append(current)
+        current = skeleton_hierarchy[current]
+#当列表中有多于一个元素时，'/' 才会出现在元素之间。str.join(iterable)只有>1的时候才会起效。
+    joints_path[joint]='/'.join(reversed(path))
+for joint,path in joints_path.items():
+    print(f"{path}")
+    
+# get path
+# get each key, then add the value,
+# use the value as key, then get the value
+# until the value is None
+print(skeleton_hierarchy)
