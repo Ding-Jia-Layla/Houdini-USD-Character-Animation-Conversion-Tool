@@ -6,6 +6,7 @@
     metersPerUnit = .01
     upAxis = 'Y'
 )
+ 
 def SkelRoot "Model" (
     kind = "component"
     prepend apiSchemas = ["SkelBindingAPI"]
@@ -16,16 +17,25 @@ def SkelRoot "Model" (
     )
     {
         uniform token[] joints = ["Shoulder", "Shoulder/Elbow", "Shoulder/Elbow/Hand"]
+        # column major order 每个（）表示一列
+        # bindTransforms[0]
+        # 1 0 0 0
+        # 0 1 0 0
+        # 0 0 1 0
+        # 0 0 0 1
         uniform matrix4d[] bindTransforms = [
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)),
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,2,1)),
+            # ignore the final value of the vector; 
+            # mat3 : rotate and scale ; 
+            # final verctor is transform :P[x] = 0 P[y] = 0 P[z] = 2
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,4,1)) 
         ]
  
         uniform matrix4d[] restTransforms = [
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)),
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,2,1)),
-            ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,2,1))
+            ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,4,1))
         ]
  
         def SkelAnimation "Anim" {
@@ -45,8 +55,6 @@ def SkelRoot "Model" (
     # Both the binding of the Skeleton, and the specificatin of the
     # weighting primvars necessitates the application of the 
     # SkelBindingAPI schema
-
-}
     def Mesh "Arm" (
         prepend apiSchemas = ["SkelBindingAPI"]
     )
@@ -87,3 +95,4 @@ def SkelRoot "Model" (
        )
        matrix4d primvars:skel:geomBindTransform = ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1))
     }
+}

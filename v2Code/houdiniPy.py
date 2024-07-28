@@ -1,5 +1,5 @@
 import random
-from pxr import Usd, UsdGeom, UsdShade, Gf, Sdf,Kind, UsdSkel
+from pxr import Usd, UsdGeom, UsdShade, Gf, Sdf,Kind, UsdSkel,Tf,Vt
 import hou
 
 node = hou.pwd()
@@ -54,7 +54,10 @@ def stage_setting(stage):
     #root = UsdSkel.Root.Define(stage, skelRootPath)
     root = UsdGeom.Xform.Define(stage, skelRootPath)
     Usd.ModelAPI(root).SetKind(Kind.Tokens.component)
-    return stage
+    skelPath = skelRootPath.AppendChild("Skel")
+    skel = UsdSkel.Skeleton.Define(stage, skelPath)
+
+    return stage,skel
 def export_geometry(stage, geometry, input_node_name):
     # Get Geometry data
     points, normals, face_vertex_counts, face_vertex_indices = get_geometry_data(geometry)
@@ -67,14 +70,23 @@ def get_skeleton_data(fbx_node):
     restTransforms = [] 
     capt_parents = fbx_node.node('fbx_skin_import1').geometry().intListAttribValue('capt_parents')
     capt_names = fbx_node.node('fbx_skin_import1').geometry().stringListAttribValue('capt_names')
-    # skeleton_capture_name = deform_node.inputs()[0] .type().name()
+    capt_xforms_list =  fbx_node.node('fbx_skin_import1').geometry().attribValue('capt_xforms')
+    bone_capture = fbx_node.node('fbx_skin_import1').geometry().findPointAttrib('boneCapture')
+    capt_xforms = [tuple(capt_xforms_list[i:i+16]) for i in range(0,len(capt_xforms_list),16)]
+    child_nodes = fbx_node.children()
+    output_sop_nodes = [node for node in child_nodes if node.type().name() == 'output']
+    rest_geometry = output_sop_nodes[0]
+    capture_pose = output_sop_nodes[1]
+    animated_pose = output_sop_nodes[2]
+    capture_pose_geo = capture_pose.geometry()
+    
+    # joints<path>
     for index, value in enumerate(capt_parents):
         if value == -1:
             root_index = index
-            print(f"the index of root is : {root_index}")
+            #print(f"the index of root is : {root_index}")
     root_name = capt_names[root_index]
     capt_dict={}
-    # skeleton dict
     for index, name in enumerate(capt_names):
         parent_index = capt_parents[index]
         if parent_index == -1:
@@ -82,9 +94,6 @@ def get_skeleton_data(fbx_node):
         else:
             parent_name = capt_names[parent_index]
         capt_dict[name] = parent_name
-    # joints<path>
-    # get the topo (structure)
-    # joints path
     joints_paths={}
     for joint in capt_dict:
         current = joint
@@ -93,50 +102,51 @@ def get_skeleton_data(fbx_node):
             path.append(current)
             current = capt_dict[current]
         joints_paths[joint]='/'.join(reversed(path))
-    for joint,path in joints_paths.items():
-        print(f"{path}")
-        
-    child_nodes = fbx_node.children()
-    output_sop_nodes = [node for node in child_nodes if node.type().name() == 'output']
-    
-    rest_geometry = output_sop_nodes[0]
-    capture_pose = output_sop_nodes[1]
-    animated_pose = output_sop_nodes[2]
-    capture_pose_geo = capture_pose.geometry()
-    
-    skeleton= capture_pose_geo.points()
+    joints = list(joints_paths.values())
+    # bind pose -- capt_xforms
+    #bindTransforms = [tuple(capt_xform[i:i+4] for i in range(0,16,4)) for capt_xform in capt_xforms]
+    bindTransforms = [Gf.Matrix4d(*capt_xform) for capt_xform in capt_xforms]
+    #print(f"bindTransforms list: {bindTransforms}")
     
     # mat3: rotate and scale
     # get the transform matrix: {0,0,0}*capt_xforms
-    # bindtransform<matrix4d>
-    
     # resttransform<matrix4d>
-    
-    # test to get one attr of one point
-    #joint_name = skeleton[2].attribValue('name')
-    #joint_transform = skeleton[2].floatListAttribValue('transform')
-    #print(f"joint name is : {joint_name}")
-    #print(f"transform should be found: {joint_transform}")
-    #print(f"parents relationship: {capt_parents}, relationship count:{len(capt_parents)}")
-    #print(f"joint names:{capt_names}, joints count:{len(capt_names)}")
-    return joints
-def export_skeleton(stage,fbx_node):
+    print(f"restTransforms list: {bone_capture}")
+
+    return joints, bindTransforms
+def export_skeleton(stage,fbx_node,skel):
     # structure of skeleton -- get
-    joints= get_skeleton_data(fbx_node)
+    joints, bindTransforms= get_skeleton_data(fbx_node)
     # set up for the skeleton -- set
+    setup_skeleton(joints,bindTransforms,skel)
     #return skeleton
+def setup_skeleton(joints,bindTransforms,skel):
+    topo = UsdSkel.Topology(joints)
+    valid, reason = topo.Validate()
+    # if not valid:
+    #     Tf.Warn("Invalid topology: %s" % reason) 
+    numJoints = len(joints)
+    # if numJoints:
+    #     print("Joints number: %s" %numJoints)
+    jointTokens = Vt.TokenArray(joints)
+    skel.GetJointsAttr().Set(jointTokens)
+    topology = UsdSkel.Topology(skel.GetJointsAttr().Get()) 
+    #bindTransform world space
+    skel.GetBindTransformsAttr().Set(bindTransforms)
+    # joints = skel.GetJointsAttr().Get()
+    # restTransform  not optional!!!!
+    
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'
     _stage = Usd.Stage.CreateNew(usd_file_path)
-    stage = stage_setting(_stage)
+    stage,skel = stage_setting(_stage)
     # get the input node
     input_node_name = hou.node('/obj/mixamo_character_animated')
     # get the final node of the input node
     fbx_node = input_node_name.node('fbxcharacterimport1')
-    #deform_node = input_node_name.node('bonedeform1')
     geometry = fbx_node.geometry()
     mesh = export_geometry(stage, geometry, input_node_name)
-    export_skeleton(stage,fbx_node)
+    export_skeleton(stage,fbx_node,skel)
     stage.GetRootLayer().Save()
 
 export_usd()
