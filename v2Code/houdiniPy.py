@@ -73,6 +73,7 @@ def get_skeleton_data(fbx_node):
     capt_xforms_list =  fbx_node.node('fbx_skin_import1').geometry().attribValue('capt_xforms')
     bone_capture = fbx_node.node('fbx_skin_import1').geometry().findPointAttrib('boneCapture')
     capt_xforms = [tuple(capt_xforms_list[i:i+16]) for i in range(0,len(capt_xforms_list),16)]
+    
     child_nodes = fbx_node.children()
     output_sop_nodes = [node for node in child_nodes if node.type().name() == 'output']
     rest_geometry = output_sop_nodes[0]
@@ -103,24 +104,32 @@ def get_skeleton_data(fbx_node):
             current = capt_dict[current]
         joints_paths[joint]='/'.join(reversed(path))
     joints = list(joints_paths.values())
-    # bind pose -- capt_xforms
-    #bindTransforms = [tuple(capt_xform[i:i+4] for i in range(0,16,4)) for capt_xform in capt_xforms]
+    # bind pose -- capt_xforms 
     bindTransforms = [Gf.Matrix4d(*capt_xform) for capt_xform in capt_xforms]
-    #print(f"bindTransforms list: {bindTransforms}")
-    
     # mat3: rotate and scale
     # get the transform matrix: {0,0,0}*capt_xforms
-    # resttransform<matrix4d>
-    print(f"restTransforms list: {bone_capture}")
-
-    return joints, bindTransforms
+    bind_transform_dict={}
+    rest_transform_dict={}
+    for index, bindTransform in bindTransforms:
+        bind_transform_dict[capt_names[index]] = bindTransform
+    # resttransform<matrix4d>: compute the local space transform 每一个关节骨骼相对于父节点的矩阵 子-父
+    # rest should be local, bind should be world space
+    #  TODO:get the parent,需要和joints也就是capt_names的顺序一致
+    for index, joint in joints_paths:
+        if(len(joint)==1):
+            rest_transform_dict[root_name] = bind_transform_dict[root_name]
+        else:
+            rest_transform_dict[joint[-1]] = bind_transform_dict[joint[-1]] -  bind_transform_dict[joint[-2]]
+    restTransforms = list(rest_transform_dict.values())
+    print(f"bindTransforms: {bindTransforms}")
+    return joints, bindTransforms, restTransforms
 def export_skeleton(stage,fbx_node,skel):
     # structure of skeleton -- get
-    joints, bindTransforms= get_skeleton_data(fbx_node)
+    joints, bindTransforms, restTransforms= get_skeleton_data(fbx_node)
     # set up for the skeleton -- set
-    setup_skeleton(joints,bindTransforms,skel)
+    setup_skeleton(joints,bindTransforms,restTransforms,skel)
     #return skeleton
-def setup_skeleton(joints,bindTransforms,skel):
+def setup_skeleton(joints,bindTransforms,restTransforms,skel):
     topo = UsdSkel.Topology(joints)
     valid, reason = topo.Validate()
     # if not valid:
@@ -133,9 +142,9 @@ def setup_skeleton(joints,bindTransforms,skel):
     topology = UsdSkel.Topology(skel.GetJointsAttr().Get()) 
     #bindTransform world space
     skel.GetBindTransformsAttr().Set(bindTransforms)
-    # joints = skel.GetJointsAttr().Get()
-    # restTransform  not optional!!!!
-    
+    # restTransforms 
+    if restTransforms and len(restTransforms) == numJoints:
+        skel.GetRestTransformsAttr().Set(restTransforms)
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'
     _stage = Usd.Stage.CreateNew(usd_file_path)
@@ -143,7 +152,7 @@ def export_usd():
     # get the input node
     input_node_name = hou.node('/obj/mixamo_character_animated')
     # get the final node of the input node
-    fbx_node = input_node_name.node('fbxcharacterimport1')
+    fbx_node = input_node_name.node('fbxcharacterimport2')
     geometry = fbx_node.geometry()
     mesh = export_geometry(stage, geometry, input_node_name)
     export_skeleton(stage,fbx_node,skel)

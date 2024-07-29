@@ -1,7 +1,12 @@
 # Msc Project
 USD rigging & animation
 
-## 22/07/2024-25/07/2024
+## 22/07/2024-28/07/2024
+
+
+The restTransforms property of a Skeleton provides local space rest transforms of each joint, which serve as a fallback values for joints that have not been overridden by an animation. As with bindTransforms, the restTransforms are ordered according to the order of the joints attribute.
+
+The bindTransforms property of a Skeleton provides the world space transform of each joint at bind time. A world space encoding has been chosen for bind transforms, since most DCC apps tend to use the same encoding, so using the same encoding tends to simplify IO.
 
 ### Analyze
 
@@ -43,7 +48,7 @@ USD rigging & animation
         - [ ] rig
         - [ ] anim
 - 不管是节点还是fbx最后的节点都是boneDeform，那么从boneDeform开始比较好
-
+UsdSkel Schema: https://openusd.org/dev/api/_usd_skel__schemas.html#UsdSkel_Skeleton
 
 - [ ] character usd
     - [ ] blend shape `OR` without blend shape
@@ -52,7 +57,7 @@ USD rigging & animation
     https://www.sidefx.com/forum/topic/95553/?page=1#post-420180
 
 ### ISSUEs
-
+- 实际上capt_xforms和bindTransforms一致不用逆矩阵，虽然不知道为啥.
 - Houdini导入USD角色动画，LOP帧数开始不对
 - 混合形状SOP不能正常使用
 

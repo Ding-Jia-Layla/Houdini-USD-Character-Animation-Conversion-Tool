@@ -1,0 +1,31 @@
+#usda 1.0
+(
+    defaultPrim = "Model"
+    metersPerUnit = 1
+    startTimeCode = 1
+    upAxis = "Y"
+)
+
+def Xform "Model" (
+    kind = "component"
+)
+{
+    def Skeleton "Skel"
+    {
+        uniform matrix4d[] bindTransforms = [
+        ( (1, 0, -0, 0), (-0, 1, -0, 0), (0, -0, 1, 0), (0, -0, 4, 1) ), 
+        ( (1, 0, 0, 0), (-0, 1, 0, 0), (0, -0, 1, 0), (0, 0, -0, 1) ), 
+        ( (1, 0, -0, 0), (-0, 1, -0, 0), (0, -0, 1, 0), (0, -0, 2, 1) )]
+        uniform token[] joints = ["Shoulder/Elbow/Hand", "Shoulder", "Shoulder/Elbow"]
+    }
+
+    def Mesh "Mesh"
+    {
+        int[] faceVertexCounts = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4]
+        int[] faceVertexIndices = [3, 2, 0, 1, 7, 6, 4, 5, 9, 8, 6, 7, 2, 3, 8, 9, 11, 10, 5, 4, 1, 0, 10, 11, 9, 7, 5, 10, 2, 9, 10, 0, 8, 3, 1, 11, 6, 8, 11, 4]
+        uniform token orientation = "leftHanded"
+        point3f[] points = [(0.5, -0.5, 4), (-0.5, -0.5, 4), (0.5, 0.5, 4), (-0.5, 0.5, 4), (-0.5, -0.5, 0), (0.5, -0.5, 0), (-0.5, 0.5, 0), (0.5, 0.5, 0), (-0.5, 0.5, 2), (0.5, 0.5, 2), (0.5, -0.5, 2), (-0.5, -0.5, 2)]
+        uniform token subdivisionScheme = "none"
+    }
+}
+
