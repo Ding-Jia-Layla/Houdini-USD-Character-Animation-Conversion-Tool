@@ -104,24 +104,30 @@ def get_skeleton_data(fbx_node):
             current = capt_dict[current]
         joints_paths[joint]='/'.join(reversed(path))
     joints = list(joints_paths.values())
+
+    print(joints)
     # bind pose -- capt_xforms 
     bindTransforms = [Gf.Matrix4d(*capt_xform) for capt_xform in capt_xforms]
     # mat3: rotate and scale
     # get the transform matrix: {0,0,0}*capt_xforms
     bind_transform_dict={}
     rest_transform_dict={}
-    for index, bindTransform in bindTransforms:
-        bind_transform_dict[capt_names[index]] = bindTransform
+    for index, value in enumerate(bindTransforms):
+        bind_transform_dict[capt_names[index]] = value
     # resttransform<matrix4d>: compute the local space transform 每一个关节骨骼相对于父节点的矩阵 子-父
     # rest should be local, bind should be world space
-    #  TODO:get the parent,需要和joints也就是capt_names的顺序一致
-    for index, joint in joints_paths:
-        if(len(joint)==1):
+    for index, value in enumerate(joints):
+        parts = value.split('/')
+        if(len(parts)==1):
             rest_transform_dict[root_name] = bind_transform_dict[root_name]
+            print(f"Processing single part: {parts[0]}")
         else:
-            rest_transform_dict[joint[-1]] = bind_transform_dict[joint[-1]] -  bind_transform_dict[joint[-2]]
+            child = parts[-1]
+            parent = parts[-2]
+            print(f" last key is : {child}" )
+            rest_transform_dict[child] = bind_transform_dict[child] -  bind_transform_dict[parent]
     restTransforms = list(rest_transform_dict.values())
-    print(f"bindTransforms: {bindTransforms}")
+    # print(f"bindTransforms: {bindTransforms}")
     return joints, bindTransforms, restTransforms
 def export_skeleton(stage,fbx_node,skel):
     # structure of skeleton -- get
