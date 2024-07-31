@@ -6,6 +6,7 @@ node = hou.pwd()
 geo = node.geometry()
 
 def setup_mesh(mesh, points, normals, face_vertex_counts, face_vertex_indices):
+    # 0->11
     mesh.GetPointsAttr().Set(points)
     mesh.GetFaceVertexCountsAttr().Set(face_vertex_counts)
     mesh.GetFaceVertexIndicesAttr().Set(face_vertex_indices)
@@ -28,6 +29,7 @@ def get_geometry_data(geometry):
     for point in geometry.points():
         position = point.position()
         points.append(Gf.Vec3f(position[0], position[1], position[2]))
+        
     # Collect face data
     for primitive in geometry.prims():
         vertices = primitive.vertices()
@@ -42,16 +44,44 @@ def get_geometry_data(geometry):
                 normals.append(Gf.Vec3f(normal[0], normal[1], normal[2]))
 
     return points, normals, face_vertex_counts, face_vertex_indices
+def export_skinning(stage,fbx_node,skel,mesh):
+    skinBinding = UsdSkel.BindingAPI.Apply(mesh.GetPrim())
+    skinBinding.CreateSkeletonRel().SetTargets([skel.GetPath()])
+    # geom_bindTransform_attr = skinBinding.CreateGeomBindTransformAttr()
+    skin_node = fbx_node.node('fbx_skin_import1').geometry()
+    skin_node_points = skin_node.points()
+    joint_indices =[]
+    joint_weights =[]
+    for point in skin_node_points:
+        if (point.attribValue('boneCapture')):
+            bone_capture = point.attribValue('boneCapture')
+            bone_capture_indices = bone_capture[0]
+            bone_capture_weights = bone_capture[1]
+            joint_indices.append(bone_capture_indices)
+            joint_weights.append(bone_capture_weights)
+            # jointIndices 数组与顶点的顺序一致，用于确定每个顶点所依赖的骨骼或关节。
+        else:
+            print("no boneCapture")  
+    joint_indices_attr = skinBinding.CreateJointIndicesPrimvar(False, 1).Set(joint_indices)
+    joint_weights_attr = skinBinding.CreateJointWeightsPrimvar(False, 1).Set(joint_weights)
+    # TODO:primvars:skel:geomBindTransform
+    child_nodes = fbx_node.children()
+    output_sop_nodes = [node for node in child_nodes if node.type().name() == 'output']
+    capture_pose = output_sop_nodes[1]
+    capture_pose_points = capture_pose.geometry().points()
     
+    
+    for point in capture_pose_points:
+        if (point.attribValue('transform')):
+            geomBindTransform_list = point.attribValue('transform')
+    print(geomBindTransform_list)
 def stage_setting(stage):
     stage.SetDefaultPrim(stage.DefinePrim('/Model', 'Xform'))
     stage.SetStartTimeCode(1)    
     #stage.SetDefaultPrim(stage.DefinePrim('/Model', 'SkelRoot'))
-    #stage.SetEndTimeCode(10)
     stage.SetMetadata('metersPerUnit', 1)
     stage.SetMetadata('upAxis', 'Y')    
     skelRootPath = Sdf.Path("/Model")
-    #root = UsdSkel.Root.Define(stage, skelRootPath)
     root = UsdGeom.Xform.Define(stage, skelRootPath)
     Usd.ModelAPI(root).SetKind(Kind.Tokens.component)
     skelPath = skelRootPath.AppendChild("Skel")
@@ -59,9 +89,9 @@ def stage_setting(stage):
 def export_geometry(stage, geometry, input_node_name):
     # Get Geometry data
     points, normals, face_vertex_counts, face_vertex_indices = get_geometry_data(geometry)
-
     mesh = UsdGeom.Mesh.Define(stage, f'/Model/Mesh')
     setup_mesh(mesh, points, normals, face_vertex_counts, face_vertex_indices)
+    return mesh
 def get_skeleton_data(fbx_node):
     joints = []
     bindTransforms = []
@@ -69,21 +99,10 @@ def get_skeleton_data(fbx_node):
     capt_parents = fbx_node.node('fbx_skin_import1').geometry().intListAttribValue('capt_parents')
     capt_names = fbx_node.node('fbx_skin_import1').geometry().stringListAttribValue('capt_names')
     capt_xforms_list =  fbx_node.node('fbx_skin_import1').geometry().attribValue('capt_xforms')
-    bone_capture = fbx_node.node('fbx_skin_import1').geometry().findPointAttrib('boneCapture')
     capt_xforms = [tuple(capt_xforms_list[i:i+16]) for i in range(0,len(capt_xforms_list),16)]
-    
-    child_nodes = fbx_node.children()
-    output_sop_nodes = [node for node in child_nodes if node.type().name() == 'output']
-    rest_geometry = output_sop_nodes[0]
-    capture_pose = output_sop_nodes[1]
-    animated_pose = output_sop_nodes[2]
-    capture_pose_geo = capture_pose.geometry()
-    
-    # joints<path>
     for index, value in enumerate(capt_parents):
         if value == -1:
             root_index = index
-            #print(f"the index of root is : {root_index}")
     root_name = capt_names[root_index]
     capt_dict={}
     for index, name in enumerate(capt_names):
@@ -103,10 +122,8 @@ def get_skeleton_data(fbx_node):
         joints_paths[joint]='/'.join(reversed(path))
     joints = list(joints_paths.values())
 
-    # print(joints)
     # bind pose -- capt_xforms 
     bindTransforms = [Gf.Matrix4d(*capt_xform) for capt_xform in capt_xforms]
-    # mat3: rotate and scale
     # get the transform matrix: {0,0,0}*capt_xforms
     bind_transform_dict={}
     rest_transform_dict={}
@@ -121,9 +138,9 @@ def get_skeleton_data(fbx_node):
         else:
             child = parts[-1]
             parent = parts[-2]
-            # print(f" last key is : {child}" )
             rest_transform_dict[child] = bind_transform_dict[child] -  bind_transform_dict[parent]
     restTransforms = list(rest_transform_dict.values())
+
     return joints, bindTransforms, restTransforms
 def export_skeleton(stage,fbx_node,skel):
     # structure of skeleton -- get
@@ -153,10 +170,10 @@ def export_animation(stage,fbx_node,skel,skelAnim,joints):
     skelAnim.CreateJointsAttr().Set(joints)
     anim_node = fbx_node.node('fbxanimimport1').geometry()
     # p[x],p[y],p[z] = V = M·V'= T_reset*R(theta)*T_2original
+    # TODO: just get the index-3 joint value
     animRot = skelAnim.CreateRotationsAttr()
     start_frame = hou.playbar.playbackRange()[0]
     end_frame = hou.playbar.playbackRange()[1]
-    print(f"开始帧数:{start_frame}, 结束帧数：{end_frame}")
     for frame in range(int(start_frame), int(end_frame) + 1):
         hou.setFrame(frame)
         transformation_matrix_original = anim_node.point(3).floatListAttribValue('transform')
@@ -188,6 +205,7 @@ def export_usd():
     mesh = export_geometry(stage, geometry, input_node_name)
     joints = export_skeleton(stage,fbx_node,skel)
     export_animation(stage,fbx_node,skel,skelAnim,joints)
+    export_skinning(stage,fbx_node,skel,mesh)
     stage.GetRootLayer().Save()
 
 export_usd()

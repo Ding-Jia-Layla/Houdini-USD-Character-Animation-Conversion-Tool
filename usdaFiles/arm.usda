@@ -71,7 +71,7 @@ def SkelRoot "Model" (
        ]
  
        rel skel:skeleton = </Model/Skel>
- 
+        # jointIndices 数组与顶点的顺序一致，用于确定每个顶点所依赖的骨骼或关节。
        int[] primvars:skel:jointIndices = [
            2,2,2,2, 0,0,0,0, 1,1,1,1
        ] (
