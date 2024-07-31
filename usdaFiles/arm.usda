@@ -17,14 +17,6 @@ def SkelRoot "Model" (
     )
     {
         uniform token[] joints = ["Shoulder", "Shoulder/Elbow", "Shoulder/Elbow/Hand"]
-        # column major order 每个（）表示一列
-        # bindTransforms[0]
-        # 1 0 0 0
-        # 0 1 0 0
-        # 0 0 1 0
-        # 0 0 0 1
-            # mat3 : rotate and scale ; 
-            # final verctor is transform :P[x] = 0 P[y] = 0 P[z] = 2
         uniform matrix4d[] bindTransforms = [
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)),
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,2,1)),

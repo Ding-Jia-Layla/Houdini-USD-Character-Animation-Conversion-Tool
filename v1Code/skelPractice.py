@@ -3,6 +3,7 @@ from pxr import Usd, UsdGeom, UsdSkel,Sdf,Kind,Vt, Tf,Gf
 stage = Usd.Stage.CreateNew("practiceSkel.usda")
 stage.SetDefaultPrim(stage.DefinePrim('/Model', 'SkelRoot'))
 stage.SetStartTimeCode(1)
+# 第十帧结束
 stage.SetEndTimeCode(10)
 stage.SetMetadata('metersPerUnit', 0.01)
 stage.SetMetadata('upAxis', 'Y')

@@ -55,9 +55,7 @@ def stage_setting(stage):
     root = UsdGeom.Xform.Define(stage, skelRootPath)
     Usd.ModelAPI(root).SetKind(Kind.Tokens.component)
     skelPath = skelRootPath.AppendChild("Skel")
-    skel = UsdSkel.Skeleton.Define(stage, skelPath)
-
-    return stage,skel
+    return stage,skelPath
 def export_geometry(stage, geometry, input_node_name):
     # Get Geometry data
     points, normals, face_vertex_counts, face_vertex_indices = get_geometry_data(geometry)
@@ -105,7 +103,7 @@ def get_skeleton_data(fbx_node):
         joints_paths[joint]='/'.join(reversed(path))
     joints = list(joints_paths.values())
 
-    print(joints)
+    # print(joints)
     # bind pose -- capt_xforms 
     bindTransforms = [Gf.Matrix4d(*capt_xform) for capt_xform in capt_xforms]
     # mat3: rotate and scale
@@ -120,14 +118,12 @@ def get_skeleton_data(fbx_node):
         parts = value.split('/')
         if(len(parts)==1):
             rest_transform_dict[root_name] = bind_transform_dict[root_name]
-            print(f"Processing single part: {parts[0]}")
         else:
             child = parts[-1]
             parent = parts[-2]
-            print(f" last key is : {child}" )
+            # print(f" last key is : {child}" )
             rest_transform_dict[child] = bind_transform_dict[child] -  bind_transform_dict[parent]
     restTransforms = list(rest_transform_dict.values())
-    # print(f"bindTransforms: {bindTransforms}")
     return joints, bindTransforms, restTransforms
 def export_skeleton(stage,fbx_node,skel):
     # structure of skeleton -- get
@@ -135,11 +131,12 @@ def export_skeleton(stage,fbx_node,skel):
     # set up for the skeleton -- set
     setup_skeleton(joints,bindTransforms,restTransforms,skel)
     #return skeleton
+    return joints
 def setup_skeleton(joints,bindTransforms,restTransforms,skel):
     topo = UsdSkel.Topology(joints)
     valid, reason = topo.Validate()
-    # if not valid:
-    #     Tf.Warn("Invalid topology: %s" % reason) 
+    if not valid:
+        Tf.Warn("Invalid topology: %s" % reason) 
     numJoints = len(joints)
     # if numJoints:
     #     print("Joints number: %s" %numJoints)
@@ -151,17 +148,46 @@ def setup_skeleton(joints,bindTransforms,restTransforms,skel):
     # restTransforms 
     if restTransforms and len(restTransforms) == numJoints:
         skel.GetRestTransformsAttr().Set(restTransforms)
+
+def export_animation(stage,fbx_node,skel,skelAnim,joints):
+    skelAnim.CreateJointsAttr().Set(joints)
+    anim_node = fbx_node.node('fbxanimimport1').geometry()
+    # p[x],p[y],p[z] = V = M·V'= T_reset*R(theta)*T_2original
+    animRot = skelAnim.CreateRotationsAttr()
+    start_frame = hou.playbar.playbackRange()[0]
+    end_frame = hou.playbar.playbackRange()[1]
+    print(f"开始帧数:{start_frame}, 结束帧数：{end_frame}")
+    for frame in range(int(start_frame), int(end_frame) + 1):
+        hou.setFrame(frame)
+        transformation_matrix_original = anim_node.point(3).floatListAttribValue('transform')
+        transformation_matrix = hou.Matrix3(
+                (transformation_matrix_original[0], transformation_matrix_original[3], transformation_matrix_original[6],
+                transformation_matrix_original[1],transformation_matrix_original[4],transformation_matrix_original[7],
+                transformation_matrix_original[2],transformation_matrix_original[5],transformation_matrix_original[8]))
+        quaternion= hou.Quaternion(transformation_matrix)
+        transforms = [quaternion[3],quaternion[0],quaternion[1],quaternion[2]]
+        if frame == 1:
+            translations = anim_node.point(3).floatListAttribValue('P')
+            translations_vec = Gf.Vec3f(translations[0], translations[1], translations[2])
+            translations_array = Vt.Vec3fArray(1, translations_vec)
+            skelAnim.CreateTranslationsAttr().Set(translations_array)
+        animRot.Set([Gf.Quatf(transforms[0],transforms[1],transforms[2],transforms[3])], Usd.TimeCode(frame))   
+    skelAnim.CreateScalesAttr().Set([(1,1,1)])
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'
     _stage = Usd.Stage.CreateNew(usd_file_path)
-    stage,skel = stage_setting(_stage)
+    stage,skelPath= stage_setting(_stage)
+    skel = UsdSkel.Skeleton.Define(stage, skelPath)
+    animPath = skelPath.AppendChild("Anim")
+    skelAnim = UsdSkel.Animation.Define(stage, animPath)
     # get the input node
     input_node_name = hou.node('/obj/mixamo_character_animated')
     # get the final node of the input node
     fbx_node = input_node_name.node('fbxcharacterimport2')
     geometry = fbx_node.geometry()
     mesh = export_geometry(stage, geometry, input_node_name)
-    export_skeleton(stage,fbx_node,skel)
+    joints = export_skeleton(stage,fbx_node,skel)
+    export_animation(stage,fbx_node,skel,skelAnim,joints)
     stage.GetRootLayer().Save()
 
 export_usd()
