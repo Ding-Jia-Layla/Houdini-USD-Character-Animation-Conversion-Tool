@@ -1,6 +1,6 @@
 from pxr import Usd, UsdGeom, UsdSkel,Sdf,Kind,Vt, Tf,Gf
 # stage setting
-stage = Usd.Stage.CreateNew("practiceSkel.usda")
+stage = Usd.Stage.CreateNew("armSelf.usda")
 stage.SetDefaultPrim(stage.DefinePrim('/Model', 'SkelRoot'))
 stage.SetStartTimeCode(1)
 # 第十帧结束
@@ -44,7 +44,7 @@ bindTransforms = [
     Gf.Matrix4d(1, 0, 0, 0,
                 0, 1, 0, 0,
                 0, 0, 1, 0,
-                0, 0, 2, 1)   
+                0, 0, 4, 1)   
 ]
 skel.GetBindTransformsAttr().Set(bindTransforms)
 restTransforms = [
@@ -59,7 +59,7 @@ restTransforms = [
     Gf.Matrix4d(1, 0, 0, 0,
                 0, 1, 0, 0,
                 0, 0, 1, 0,
-                0, 0, 4, 1)   
+                0, 0, 2, 1)   
 ]
 if restTransforms and len(restTransforms) == numJoints:
     skel.GetRestTransformsAttr().Set(restTransforms)

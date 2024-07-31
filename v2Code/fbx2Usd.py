@@ -35,7 +35,7 @@ def get_geometry_data(geometry):
         vertices = primitive.vertices()
         face_vertex_counts.append(len(vertices))
 
-        for vertex in vertices:
+        for vertex in reversed(vertices):
             face_vertex_indices.append(vertex.point().number())
 
             # Get Normals data
@@ -71,21 +71,10 @@ def export_skinning(stage,fbx_node,skel,mesh,geom_bindTransform):
     capture_pose_points = capture_pose.geometry().points()
     geom_bindTransform_attr = skinBinding.CreateGeomBindTransformAttr(geom_bindTransform)
     
-def stage_setting(stage):
-    stage.SetDefaultPrim(stage.DefinePrim('/Model', 'Xform'))
-    stage.SetStartTimeCode(1)    
-    #stage.SetDefaultPrim(stage.DefinePrim('/Model', 'SkelRoot'))
-    stage.SetMetadata('metersPerUnit', 1)
-    stage.SetMetadata('upAxis', 'Y')    
-    skelRootPath = Sdf.Path("/Model")
-    root = UsdGeom.Xform.Define(stage, skelRootPath)
-    Usd.ModelAPI(root).SetKind(Kind.Tokens.component)
-    skelPath = skelRootPath.AppendChild("Skel")
-    return stage,skelPath
 def export_geometry(stage, geometry, input_node_name):
     # Get Geometry data
     points, normals, face_vertex_counts, face_vertex_indices = get_geometry_data(geometry)
-    mesh = UsdGeom.Mesh.Define(stage, f'/Model/Mesh')
+    mesh = UsdGeom.Mesh.Define(stage, f'/Model/Arm')
     setup_mesh(mesh, points, normals, face_vertex_counts, face_vertex_indices)
     return mesh
 def get_skeleton_data(fbx_node):
@@ -134,13 +123,18 @@ def get_skeleton_data(fbx_node):
         else:
             child = parts[-1]
             parent = parts[-2]
-            rest_transform_dict[child] = bind_transform_dict[child] -  bind_transform_dict[parent]
+            T = bind_transform_dict[child] -  bind_transform_dict[parent]
+            M = Gf.Matrix4d(1.0)
+            transform_vector = Gf.Vec3d(T[3][0], T[3][1], T[3][2])
+            M.SetTranslate(transform_vector)
+            rest_transform_dict[child] = M
     restTransforms = list(rest_transform_dict.values())
+    print(f"restTransforms:{restTransforms}")
     root_bindTransform = bind_transform_dict[root_name]
     root_restTransform = rest_transform_dict[root_name]
     geom_bindTransform = root_bindTransform * root_restTransform
     
-    print(f"geombindTransform:{geom_bindTransform}")
+    # print(f"geombindTransform:{geom_bindTransform}")
     return joints, bindTransforms, restTransforms,geom_bindTransform
 def export_skeleton(stage,fbx_node,skel):
     # structure of skeleton -- get
@@ -166,9 +160,12 @@ def setup_skeleton(joints,bindTransforms,restTransforms,skel):
     # restTransforms 
     if restTransforms and len(restTransforms) == numJoints:
         skel.GetRestTransformsAttr().Set(restTransforms)
-   
+
 def export_animation(stage,fbx_node,skel,skelAnim,joints):
-    skelAnim.CreateJointsAttr().Set(joints)
+    # str: print(joints[1])
+    joints_anim = []
+    joints_anim.append(joints[1])
+    skelAnim.CreateJointsAttr().Set(joints_anim)
     anim_node = fbx_node.node('fbxanimimport1').geometry()
     # p[x],p[y],p[z] = V = M·V'= T_reset*R(theta)*T_2original
     # TODO: just get the index-3 joint value
@@ -178,12 +175,15 @@ def export_animation(stage,fbx_node,skel,skelAnim,joints):
     for frame in range(int(start_frame), int(end_frame) + 1):
         hou.setFrame(frame)
         transformation_matrix_original = anim_node.point(3).floatListAttribValue('transform')
+        # transform 9数据直接按行走
         transformation_matrix = hou.Matrix3(
-                (transformation_matrix_original[0], transformation_matrix_original[3], transformation_matrix_original[6],
-                transformation_matrix_original[1],transformation_matrix_original[4],transformation_matrix_original[7],
-                transformation_matrix_original[2],transformation_matrix_original[5],transformation_matrix_original[8]))
+                (transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2],
+                transformation_matrix_original[3],transformation_matrix_original[4],transformation_matrix_original[5],
+                transformation_matrix_original[6],transformation_matrix_original[7],transformation_matrix_original[8]))
         quaternion= hou.Quaternion(transformation_matrix)
         transforms = [quaternion[3],quaternion[0],quaternion[1],quaternion[2]]
+        if frame == 10:
+            print(f"10 frame get data and quaternion : {transformation_matrix, transforms}")
         if frame == 1:
             translations = anim_node.point(3).floatListAttribValue('P')
             translations_vec = Gf.Vec3f(translations[0], translations[1], translations[2])
@@ -191,13 +191,28 @@ def export_animation(stage,fbx_node,skel,skelAnim,joints):
             skelAnim.CreateTranslationsAttr().Set(translations_array)
         animRot.Set([Gf.Quatf(transforms[0],transforms[1],transforms[2],transforms[3])], Usd.TimeCode(frame))   
     skelAnim.CreateScalesAttr().Set([(1,1,1)])
+def stage_setting(stage):
+    stage.SetDefaultPrim(stage.DefinePrim('/Model', 'SkelRoot'))
+    stage.SetStartTimeCode(1)    
+    stage.SetMetadata('metersPerUnit', 0.01)
+    stage.SetEndTimeCode(10)
+    stage.SetMetadata('upAxis', 'Y')    
+    skelRootPath = Sdf.Path("/Model")
+    skel_root = UsdSkel.Root.Define(stage, skelRootPath)
+    Usd.ModelAPI(skel_root).SetKind(Kind.Tokens.component)
+    skelPath = skelRootPath.AppendChild("Skel")
+    return stage,skelPath,skel_root
+
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'
     _stage = Usd.Stage.CreateNew(usd_file_path)
-    stage,skelPath= stage_setting(_stage)
+    stage,skelPath,skel_root= stage_setting(_stage)
     skel = UsdSkel.Skeleton.Define(stage, skelPath)
+    skeleton_skel_binding = UsdSkel.BindingAPI.Apply(skel.GetPrim())
+    skeleton_root_binding = UsdSkel.BindingAPI.Apply(skel_root.GetPrim())
     animPath = skelPath.AppendChild("Anim")
     skelAnim = UsdSkel.Animation.Define(stage, animPath)
+    skeleton_skel_binding.CreateAnimationSourceRel().SetTargets([skelAnim.GetPrim().GetPath()])
     # get the input node
     input_node_name = hou.node('/obj/mixamo_character_animated')
     # get the final node of the input node
