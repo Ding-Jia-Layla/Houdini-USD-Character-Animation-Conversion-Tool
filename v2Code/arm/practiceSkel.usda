@@ -8,12 +8,12 @@
 )
 
 def SkelRoot "Model" (
-    prepend apiSchemas = ["SkelBindingAPI"]
+    #prepend apiSchemas = ["SkelBindingAPI"]
     kind = "component"
 )
 {
     def Skeleton "Skel" (
-        prepend apiSchemas = ["SkelBindingAPI"]
+        #prepend apiSchemas = ["SkelBindingAPI"]
     )
     {
         uniform matrix4d[] bindTransforms = [( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1) ), ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 2, 1) ), ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 2, 1) )]
@@ -34,7 +34,7 @@ def SkelRoot "Model" (
     }
 
     def Mesh "Arm" (
-        prepend apiSchemas = ["SkelBindingAPI"]
+        #prepend apiSchemas = ["SkelBindingAPI"]
     )
     {
         int[] faceVertexCounts = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4]

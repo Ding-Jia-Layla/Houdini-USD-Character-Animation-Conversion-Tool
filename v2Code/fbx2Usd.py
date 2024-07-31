@@ -44,7 +44,7 @@ def get_geometry_data(geometry):
                 normals.append(Gf.Vec3f(normal[0], normal[1], normal[2]))
 
     return points, normals, face_vertex_counts, face_vertex_indices
-def export_skinning(stage,fbx_node,skel,mesh):
+def export_skinning(stage,fbx_node,skel,mesh,geom_bindTransform):
     skinBinding = UsdSkel.BindingAPI.Apply(mesh.GetPrim())
     skinBinding.CreateSkeletonRel().SetTargets([skel.GetPath()])
     # geom_bindTransform_attr = skinBinding.CreateGeomBindTransformAttr()
@@ -69,12 +69,8 @@ def export_skinning(stage,fbx_node,skel,mesh):
     output_sop_nodes = [node for node in child_nodes if node.type().name() == 'output']
     capture_pose = output_sop_nodes[1]
     capture_pose_points = capture_pose.geometry().points()
+    geom_bindTransform_attr = skinBinding.CreateGeomBindTransformAttr(geom_bindTransform)
     
-    
-    for point in capture_pose_points:
-        if (point.attribValue('transform')):
-            geomBindTransform_list = point.attribValue('transform')
-    print(geomBindTransform_list)
 def stage_setting(stage):
     stage.SetDefaultPrim(stage.DefinePrim('/Model', 'Xform'))
     stage.SetStartTimeCode(1)    
@@ -140,16 +136,21 @@ def get_skeleton_data(fbx_node):
             parent = parts[-2]
             rest_transform_dict[child] = bind_transform_dict[child] -  bind_transform_dict[parent]
     restTransforms = list(rest_transform_dict.values())
-
-    return joints, bindTransforms, restTransforms
+    root_bindTransform = bind_transform_dict[root_name]
+    root_restTransform = rest_transform_dict[root_name]
+    geom_bindTransform = root_bindTransform * root_restTransform
+    
+    print(f"geombindTransform:{geom_bindTransform}")
+    return joints, bindTransforms, restTransforms,geom_bindTransform
 def export_skeleton(stage,fbx_node,skel):
     # structure of skeleton -- get
-    joints, bindTransforms, restTransforms= get_skeleton_data(fbx_node)
+    joints, bindTransforms, restTransforms,geom_bindTransform= get_skeleton_data(fbx_node)
     # set up for the skeleton -- set
     setup_skeleton(joints,bindTransforms,restTransforms,skel)
     #return skeleton
-    return joints
+    return joints,geom_bindTransform
 def setup_skeleton(joints,bindTransforms,restTransforms,skel):
+    
     topo = UsdSkel.Topology(joints)
     valid, reason = topo.Validate()
     if not valid:
@@ -165,7 +166,7 @@ def setup_skeleton(joints,bindTransforms,restTransforms,skel):
     # restTransforms 
     if restTransforms and len(restTransforms) == numJoints:
         skel.GetRestTransformsAttr().Set(restTransforms)
-
+   
 def export_animation(stage,fbx_node,skel,skelAnim,joints):
     skelAnim.CreateJointsAttr().Set(joints)
     anim_node = fbx_node.node('fbxanimimport1').geometry()
@@ -203,9 +204,9 @@ def export_usd():
     fbx_node = input_node_name.node('fbxcharacterimport2')
     geometry = fbx_node.geometry()
     mesh = export_geometry(stage, geometry, input_node_name)
-    joints = export_skeleton(stage,fbx_node,skel)
+    joints,geom_bindTransform = export_skeleton(stage,fbx_node,skel)
     export_animation(stage,fbx_node,skel,skelAnim,joints)
-    export_skinning(stage,fbx_node,skel,mesh)
+    export_skinning(stage,fbx_node,skel,mesh,geom_bindTransform)
     stage.GetRootLayer().Save()
 
 export_usd()
