@@ -5,7 +5,8 @@ m11, m21, m31, m12, m22, m32, m13, m23, m33 = 1.0, 0.0, 0.0, 0.0, 1.930754660861
 rotation_matrix_np = np.array([[m11, m12, m13],
                             [m21, m22, m23],
                             [m31, m32, m33]])
-Rq=[0.7071, 0.7071, 0, 0]
+Rh = hou.Matrix3((m11, m12, m13, m21, m22, m23, m31, m32, m33)
+
 rotation_np = R.from_matrix(rotation_matrix_np)
 quaternion_scipy = rotation_np.as_quat()
 quaternion_other = [quaternion_scipy[3], quaternion_scipy[0], quaternion_scipy[1], quaternion_scipy[2]]
@@ -80,3 +81,6 @@ bindTransforms= [
 ]
 mius_geomBindTransform = bindTransforms[0]*restTransforms[0]
 print(mius_geomBindTransform)
+
+
+

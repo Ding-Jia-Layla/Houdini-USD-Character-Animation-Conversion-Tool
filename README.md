@@ -27,11 +27,11 @@ usd文件会有混合形状在SOP失效的问题
         - [x] geo(mesh) -py
         - [ ] rig
         - [ ] anim
-- [ ] fbx(boneDeform)→usd
-    - [ ] houdini export usd 
+- [x] fbx(boneDeform)→usd
+    - [x] houdini export usd 
         - [x] geo(mesh) -py
         - [x] rig
-        - [ ] anim
+        - [x] anim
 - 不管是节点还是fbx最后的节点都是boneDeform，那么从boneDeform开始比较好
 UsdSkel Schema: https://openusd.org/dev/api/_usd_skel__schemas.html#UsdSkel_Skeleton
 
@@ -48,6 +48,7 @@ UsdSkel Schema: https://openusd.org/dev/api/_usd_skel__schemas.html#UsdSkel_Skel
 
 
 ### LINK:
+https://openusd.org/release/api/_usd_skel__schemas.html#UsdSkel_BindingAPI_BlendShapes
 https://lucascheller.github.io/VFX-UsdSurvivalGuide/core/elements/animation.html
 
 四元数和旋转矩阵计算转换：

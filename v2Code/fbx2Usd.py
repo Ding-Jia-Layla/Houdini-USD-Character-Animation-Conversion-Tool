@@ -59,7 +59,6 @@ def export_skinning(stage,fbx_node,skel,mesh,geom_bindTransform):
             bone_capture_weights = bone_capture[1]
             joint_indices.append(bone_capture_indices)
             joint_weights.append(bone_capture_weights)
-            # jointIndices 数组与顶点的顺序一致，用于确定每个顶点所依赖的骨骼或关节。
         else:
             print("no boneCapture")  
     joint_indices_attr = skinBinding.CreateJointIndicesPrimvar(False, 1).Set(joint_indices)
@@ -164,7 +163,7 @@ def setup_skeleton(joints,bindTransforms,restTransforms,skel):
 def export_animation(stage,fbx_node,skel,skelAnim,joints):
     # str: print(joints[1])
     joints_anim = []
-    joints_anim.append(joints[1])
+    joints_anim.append(joints)
     skelAnim.CreateJointsAttr().Set(joints_anim)
     anim_node = fbx_node.node('fbxanimimport1').geometry()
     # p[x],p[y],p[z] = V = M·V'= T_reset*R(theta)*T_2original
@@ -172,25 +171,24 @@ def export_animation(stage,fbx_node,skel,skelAnim,joints):
     animRot = skelAnim.CreateRotationsAttr()
     start_frame = hou.playbar.playbackRange()[0]
     end_frame = hou.playbar.playbackRange()[1]
+    points = anim_node.points()
     for frame in range(int(start_frame), int(end_frame) + 1):
         hou.setFrame(frame)
-        transformation_matrix_original = anim_node.point(3).floatListAttribValue('transform')
-        # transform 9数据直接按行走
-        transformation_matrix = hou.Matrix3(
-                (transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2],
-                transformation_matrix_original[3],transformation_matrix_original[4],transformation_matrix_original[5],
-                transformation_matrix_original[6],transformation_matrix_original[7],transformation_matrix_original[8]))
-        quaternion= hou.Quaternion(transformation_matrix)
-        transforms = [quaternion[3],quaternion[0],quaternion[1],quaternion[2]]
-        if frame == 10:
-            print(f"10 frame get data and quaternion : {transformation_matrix, transforms}")
-        if frame == 1:
-            translations = anim_node.point(3).floatListAttribValue('P')
+        for point in points:
+            transformation_matrix_original = point.floatListAttribValue('transform')
+            # transform 9数据直接按行走
+            transformation_matrix = hou.Matrix3(
+                    (transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2],
+                    transformation_matrix_original[3],transformation_matrix_original[4],transformation_matrix_original[5],
+                    transformation_matrix_original[6],transformation_matrix_original[7],transformation_matrix_original[8]))
+            quaternion= hou.Quaternion(transformation_matrix)
+            transforms = [quaternion[3],quaternion[0],quaternion[1],quaternion[2]]
+            translations = point.floatListAttribValue('P')
             translations_vec = Gf.Vec3f(translations[0], translations[1], translations[2])
             translations_array = Vt.Vec3fArray(1, translations_vec)
-            skelAnim.CreateTranslationsAttr().Set(translations_array)
-        animRot.Set([Gf.Quatf(transforms[0],transforms[1],transforms[2],transforms[3])], Usd.TimeCode(frame))   
-    skelAnim.CreateScalesAttr().Set([(1,1,1)])
+            skelAnim.CreateTranslationsAttr().Set(translations_array,Usd.TimeCode(frame))
+            animRot.Set([Gf.Quatf(transforms[0],transforms[1],transforms[2],transforms[3])], Usd.TimeCode(frame))   
+            skelAnim.CreateScalesAttr().Set([(1,1,1)],Usd.TimeCode(frame))
 def stage_setting(stage):
     stage.SetDefaultPrim(stage.DefinePrim('/Model', 'SkelRoot'))
     stage.SetStartTimeCode(1)    
