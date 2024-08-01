@@ -12,7 +12,13 @@ quaternion_scipy = rotation_np.as_quat()
 quaternion_other = [quaternion_scipy[3], quaternion_scipy[0], quaternion_scipy[1], quaternion_scipy[2]]
 print(f"quaternion :{quaternion_other}")
 
-
+mat = hou.Matrix4([
+    1, 0, 0, 2,
+    0, 1, 0, 3,
+    0, 0, 1, 4,
+    0, 0, 0, 1
+scale = mat.extractScales()
+print("Extractedscale:", scale)
 
 # import numpy as np
 # from pxr import Gf

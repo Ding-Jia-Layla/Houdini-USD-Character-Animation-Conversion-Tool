@@ -117,6 +117,7 @@ def get_skeleton_data(fbx_node):
     # rest should be local, bind should be world space
     for index, value in enumerate(joints):
         parts = value.split('/')
+        # print(f"bone parts:{parts}")
         if(len(parts)==1):
             rest_transform_dict[root_name] = bind_transform_dict[root_name]
         else:
@@ -132,16 +133,15 @@ def get_skeleton_data(fbx_node):
     root_bindTransform = bind_transform_dict[root_name]
     root_restTransform = rest_transform_dict[root_name]
     geom_bindTransform = root_bindTransform * root_restTransform
-    
     # print(f"geombindTransform:{geom_bindTransform}")
-    return joints, bindTransforms, restTransforms,geom_bindTransform
+    return joints, bindTransforms, restTransforms,geom_bindTransform, root_name
 def export_skeleton(stage,fbx_node,skel):
     # structure of skeleton -- get
-    joints, bindTransforms, restTransforms,geom_bindTransform= get_skeleton_data(fbx_node)
+    joints, bindTransforms, restTransforms,geom_bindTransform, root_name= get_skeleton_data(fbx_node)
     # set up for the skeleton -- set
     setup_skeleton(joints,bindTransforms,restTransforms,skel)
     #return skeleton
-    return joints,geom_bindTransform
+    return joints,geom_bindTransform, root_name
 def setup_skeleton(joints,bindTransforms,restTransforms,skel):
     
     topo = UsdSkel.Topology(joints)
@@ -159,11 +159,10 @@ def setup_skeleton(joints,bindTransforms,restTransforms,skel):
     # restTransforms 
     if restTransforms and len(restTransforms) == numJoints:
         skel.GetRestTransformsAttr().Set(restTransforms)
-
-def export_animation(stage,fbx_node,skel,skelAnim,joints):
-    # str: print(joints[1])
-    joints_anim = []
-    joints_anim.append(joints)
+def export_animation(stage,fbx_node,skel,skelAnim,joints,root_name):
+    print(f"animation joints list: {joints}")
+    
+    joints_anim = Vt.TokenArray([joint for joint in joints])
     skelAnim.CreateJointsAttr().Set(joints_anim)
     anim_node = fbx_node.node('fbxanimimport1').geometry()
     # p[x],p[y],p[z] = V = M·V'= T_reset*R(theta)*T_2original
@@ -171,24 +170,54 @@ def export_animation(stage,fbx_node,skel,skelAnim,joints):
     animRot = skelAnim.CreateRotationsAttr()
     start_frame = hou.playbar.playbackRange()[0]
     end_frame = hou.playbar.playbackRange()[1]
+    # 找不含根节点的名字就是mesh的名字 从而确定index
+    # get the path attr, check root_name exists
+    points_original = anim_node.points()
     points = anim_node.points()
+    mesh_index = None 
+    for index,point_original in enumerate(points_original):
+        point_path = point_original.stringAttribValue('path')
+        parts = point_path.split('/')
+        print(f"parts:{parts}")
+        if(len(parts)==2)and(parts[1]!=root_name):
+            print("find mesh")
+            mesh_index = index
+    print(f"mesh_index: {mesh_index}, root_name: {root_name}") 
     for frame in range(int(start_frame), int(end_frame) + 1):
         hou.setFrame(frame)
-        for point in points:
-            transformation_matrix_original = point.floatListAttribValue('transform')
-            # transform 9数据直接按行走
-            transformation_matrix = hou.Matrix3(
-                    (transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2],
-                    transformation_matrix_original[3],transformation_matrix_original[4],transformation_matrix_original[5],
-                    transformation_matrix_original[6],transformation_matrix_original[7],transformation_matrix_original[8]))
-            quaternion= hou.Quaternion(transformation_matrix)
-            transforms = [quaternion[3],quaternion[0],quaternion[1],quaternion[2]]
-            translations = point.floatListAttribValue('P')
-            translations_vec = Gf.Vec3f(translations[0], translations[1], translations[2])
-            translations_array = Vt.Vec3fArray(1, translations_vec)
-            skelAnim.CreateTranslationsAttr().Set(translations_array,Usd.TimeCode(frame))
-            animRot.Set([Gf.Quatf(transforms[0],transforms[1],transforms[2],transforms[3])], Usd.TimeCode(frame))   
-            skelAnim.CreateScalesAttr().Set([(1,1,1)],Usd.TimeCode(frame))
+        translations_frame = []
+        rotations_frame = []
+        scales_frame = []
+        # point =joints 要拿到关节而不是点
+        for index, point in enumerate(points):
+            if index != mesh_index:
+                transformation_matrix_original = point.floatListAttribValue('transform')
+                translations = point.floatListAttribValue('P')
+                translations_vec = Gf.Vec3f(translations[0], translations[1], translations[2])
+                # transform 9数据直接按行走
+                matrix4 = hou.Matrix4(
+                [transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2], translations[0],
+                transformation_matrix_original[3], transformation_matrix_original[4], transformation_matrix_original[5], translations[1],
+                transformation_matrix_original[6], transformation_matrix_original[7], transformation_matrix_original[8], translations[2],
+                0, 0, 0, 1])
+                # rotation
+                transformation_matrix = hou.Matrix3(
+                        (transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2],
+                        transformation_matrix_original[3],transformation_matrix_original[4],transformation_matrix_original[5],
+                        transformation_matrix_original[6],transformation_matrix_original[7],transformation_matrix_original[8]))
+                quaternion= hou.Quaternion(transformation_matrix)
+                rotation = [quaternion[3],quaternion[0],quaternion[1],quaternion[2]]
+                rotations_frame.append(Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2]))
+                # scale
+                scale =matrix4.extractScales()
+                scales_frame.append(Gf.Vec3f(scale[0], scale[1], scale[2]))
+                # translation
+                translations_frame.append(Gf.Vec3f(translations_vec[0],translations_vec[1],translations_vec[2]))
+            # 一旦获得了这一帧所有点的数据
+            animRot.Set(Vt.QuatfArray(rotations_frame), Usd.TimeCode(frame))  
+            skelAnim.CreateScalesAttr().Set(Vt.Vec3fArray(scales_frame),Usd.TimeCode(frame))
+            skelAnim.CreateTranslationsAttr().Set(Vt.Vec3fArray(translations_frame),Usd.TimeCode(frame))
+        
 def stage_setting(stage):
     stage.SetDefaultPrim(stage.DefinePrim('/Model', 'SkelRoot'))
     stage.SetStartTimeCode(1)    
@@ -217,8 +246,8 @@ def export_usd():
     fbx_node = input_node_name.node('fbxcharacterimport2')
     geometry = fbx_node.geometry()
     mesh = export_geometry(stage, geometry, input_node_name)
-    joints,geom_bindTransform = export_skeleton(stage,fbx_node,skel)
-    export_animation(stage,fbx_node,skel,skelAnim,joints)
+    joints,geom_bindTransform,root_name = export_skeleton(stage,fbx_node,skel)
+    export_animation(stage,fbx_node,skel,skelAnim,joints,root_name)
     export_skinning(stage,fbx_node,skel,mesh,geom_bindTransform)
     stage.GetRootLayer().Save()
 
