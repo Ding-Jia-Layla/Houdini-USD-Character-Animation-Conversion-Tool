@@ -3,26 +3,30 @@
     defaultPrim = "Model"
     endTimeCode = 10
     startTimeCode = 1
-    metersPerUnit = .01
+    metersPerUnit = 0.01
     upAxis = 'Y'
 )
  
-def SkelRoot "Model" (
-    kind = "component"
-    prepend apiSchemas = ["SkelBindingAPI"]
-)
+def SkelRoot "Model" 
 {
     def Skeleton "Skel" (
         prepend apiSchemas = ["SkelBindingAPI"]
     )
     {
-        uniform token[] joints = ["Shoulder", "Shoulder/Elbow", "Shoulder/Elbow/Hand"]
+        uniform token[] joints = ["/Shoulder", "/Shoulder/Elbow", "/Shoulder/Elbow/Hand"]
         uniform matrix4d[] bindTransforms = [
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)),
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,2,1)),
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,4,1)) 
         ]
- 
+# 1 0 0 0 
+# 0 1 0 0 
+# 0 0 1 2 
+# 0 0 0 1
+    Gf.Matrix4d(1, 0, 0, 0,     
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 2, 1), 
         uniform matrix4d[] restTransforms = [
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1)),
             ((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,2,1)),

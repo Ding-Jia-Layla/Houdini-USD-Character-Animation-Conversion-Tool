@@ -1,6 +1,6 @@
 from pxr import Gf
 
-def compute_bind_transforms(joints, rest_transforms):
+def compute_bind_transforms(joints_relationship_dict, rest_transforms):
     bind_transforms = {}
     
     def calculate_bind_transform(joint):
@@ -8,7 +8,7 @@ def compute_bind_transforms(joints, rest_transforms):
         if joint in bind_transforms:
             return bind_transforms[joint]
         
-        parent = joints[joint]
+        parent = joints_relationship_dict[joint]
         
         if parent is None:
             # 根节点，直接使用restTransform作为bindTransform
@@ -22,13 +22,13 @@ def compute_bind_transforms(joints, rest_transforms):
         return bind_transforms[joint]
     
     # 计算所有关节的bindTransform
-    for joint in joints:
+    for joint in joints_relationship_dict:
         calculate_bind_transform(joint)
     
     return bind_transforms
 
 # 示例数据
-joints = {
+joints_relationship_dict = {
     "root": None,
     "child1": "root",
     "child2": "child1"
@@ -40,5 +40,5 @@ rest_transforms = {
     "child2": Gf.Matrix4d(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 2, 1)))
 }
 
-bind_transforms = compute_bind_transforms(joints, rest_transforms)
+bind_transforms = compute_bind_transforms(joints_relationship_dict, rest_transforms)
 print(bind_transforms)
