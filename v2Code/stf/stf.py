@@ -11,5 +11,5 @@ mymodule = inlinecpp.createLibrary(
 """])
 string = "one"
 for pattern in "o*", "x*", "^o*":
-    print repr(string), "matches", repr(pattern), ":",
-    print mymodule.matchesPattern(string, pattern)
+    print (repr(string), "matches", repr(pattern), ":",)
+    print (mymodule.matchesPattern(string, pattern))
