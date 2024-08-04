@@ -1,143 +1,44 @@
-import hou
-child_nodes = hou.node('/obj/mixamo_character_animated/fbxcharacterimport2').children()
-output_sop_nodes = [node for node in child_nodes if node.type().name() == 'output']
-capture_pose = output_sop_nodes[1]
-skin_points = capture_pose.geometry().points()
-anim_node = output_sop_nodes[2]
-anim_points = anim_node.geometry().points()
-skin_points_list = []
-anim_points_list = []
-for point in skin_points:
-    skin_joint_names = point.stringAttribValue('name')
-    skin_points_list.append(skin_joint_names)
-for point in anim_points:
-    anim_joint_names = point.stringAttribValue('name')
-    anim_points_list.append(anim_joint_names)
-print("Skin Joint Names:", skin_points_list)
-print("Animation Joint Names:", anim_points_list)
+from pxr import Gf
 
+def compute_bind_transforms(joints, rest_transforms):
+    bind_transforms = {}
+    
+    def calculate_bind_transform(joint):
+        # 如果bindTransform已经计算过了，直接返回
+        if joint in bind_transforms:
+            return bind_transforms[joint]
+        
+        parent = joints[joint]
+        
+        if parent is None:
+            # 根节点，直接使用restTransform作为bindTransform
+            bind_transforms[joint] = rest_transforms[joint]
+        else:
+            # 递归计算父节点的bindTransform
+            parent_bind_transform = calculate_bind_transform(parent)
+            # 计算子节点的bindTransform
+            bind_transforms[joint] = rest_transforms[joint] * parent_bind_transform
+        
+        return bind_transforms[joint]
+    
+    # 计算所有关节的bindTransform
+    for joint in joints:
+        calculate_bind_transform(joint)
+    
+    return bind_transforms
 
+# 示例数据
+joints = {
+    "root": None,
+    "child1": "root",
+    "child2": "child1"
+}
 
+rest_transforms = {
+    "root": Gf.Matrix4d(((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1))),
+    "child1": Gf.Matrix4d(((1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,2,1))),
+    "child2": Gf.Matrix4d(((1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 2, 1)))
+}
 
-SkinJointNames =  [
-    'mixamorig:Head', 
-    'mixamorig:LeftHandPinky1', 
-    'mixamorig:LeftArm', 
-    'mixamorig:LeftForeArm', 
-    'mixamorig:LeftHandMiddle1', 
-    'mixamorig:LeftHandRing1', 
-    'mixamorig:LeftHand', 
-    'mixamorig:LeftHandThumb1', 
-    'mixamorig:LeftHandPinky2', 
-    'mixamorig:LeftHandRing2', 
-    'mixamorig:LeftHandPinky3', 
-    'mixamorig:LeftHandMiddle2', 
-    'mixamorig:LeftHandRing3', 
-    'mixamorig:LeftHandMiddle3', 
-    'mixamorig:LeftHandIndex1', 
-    'mixamorig:LeftHandIndex2', 
-    'mixamorig:LeftHandIndex3', 
-    'mixamorig:LeftHandThumb3', 
-    'mixamorig:LeftHandThumb2', 
-    'mixamorig:RightHand', 
-    'mixamorig:RightArm', 
-    'mixamorig:RightForeArm', 
-    'mixamorig:RightHandMiddle1', 
-    'mixamorig:RightHandRing1', 
-    'mixamorig:RightHandPinky1', 
-    'mixamorig:RightHandRing2', 
-    'mixamorig:RightHandPinky2', 
-    'mixamorig:RightHandPinky3', 
-    'mixamorig:RightHandRing3', 
-    'mixamorig:RightHandMiddle2', 
-    'mixamorig:RightHandMiddle3', 
-    'mixamorig:RightHandIndex1', 
-    'mixamorig:RightHandIndex2', 
-    'mixamorig:RightHandIndex3', 
-    'mixamorig:RightHandThumb1', 
-    'mixamorig:RightHandThumb2', 
-    'mixamorig:RightHandThumb3', 
-    'mixamorig:Neck', 
-    'mixamorig:Spine2', 
-    'mixamorig:Spine1', 
-    'mixamorig:LeftShoulder', 
-    'mixamorig:Spine', 
-    'mixamorig:Hips', 
-    'mixamorig:LeftUpLeg', 
-    'mixamorig:RightUpLeg', 
-    'mixamorig:LeftLeg', 
-    'mixamorig:LeftFoot', 
-    'mixamorig:LeftToeBase', 
-    'mixamorig:RightShoulder', 
-    'mixamorig:RightFoot', 
-    'mixamorig:RightLeg', 
-    'mixamorig:RightToeBase']
-AnimationJointNames = [
-    'Ch03', 
-    'mixamorig:Hips', 
-    'mixamorig:Spine', 
-    'mixamorig:Spine1', 
-    'mixamorig:Spine2', 
-    'mixamorig:Neck', 
-    'mixamorig:Head', 
-    'mixamorig:HeadTop_End', 
-    'mixamorig:LeftShoulder', 
-    'mixamorig:LeftArm', 
-    'mixamorig:LeftForeArm', 
-    'mixamorig:LeftHand', 
-    'mixamorig:LeftHandThumb1', 
-    'mixamorig:LeftHandThumb2',
-    'mixamorig:LeftHandThumb3', 
-    'mixamorig:LeftHandThumb4', 
-    'mixamorig:LeftHandIndex1', 
-    'mixamorig:LeftHandIndex2', 
-    'mixamorig:LeftHandIndex3', 
-    'mixamorig:LeftHandIndex4', 
-    'mixamorig:LeftHandMiddle1', 
-    'mixamorig:LeftHandMiddle2', 
-    'mixamorig:LeftHandMiddle3', 
-    'mixamorig:LeftHandMiddle4', 
-    'mixamorig:LeftHandRing1', 
-    'mixamorig:LeftHandRing2', 
-    'mixamorig:LeftHandRing3', 
-    'mixamorig:LeftHandRing4', 
-    'mixamorig:LeftHandPinky1', 
-    'mixamorig:LeftHandPinky2', 
-    'mixamorig:LeftHandPinky3', 
-    'mixamorig:LeftHandPinky4', 
-    'mixamorig:RightShoulder', 
-    'mixamorig:RightArm', 
-    'mixamorig:RightForeArm', 
-    'mixamorig:RightHand', 
-    'mixamorig:RightHandThumb1', 
-    'mixamorig:RightHandThumb2', 
-    'mixamorig:RightHandThumb3', 
-    'mixamorig:RightHandThumb4', 
-    'mixamorig:RightHandIndex1', 
-    'mixamorig:RightHandIndex2', 
-    'mixamorig:RightHandIndex3', 
-    'mixamorig:RightHandIndex4', 
-    'mixamorig:RightHandMiddle1', 
-    'mixamorig:RightHandMiddle2', 
-    'mixamorig:RightHandMiddle3', 
-    'mixamorig:RightHandMiddle4', 
-    'mixamorig:RightHandRing1', 
-    'mixamorig:RightHandRing2', 
-    'mixamorig:RightHandRing3', 
-    'mixamorig:RightHandRing4', 
-    'mixamorig:RightHandPinky1', 
-    'mixamorig:RightHandPinky2', 
-    'mixamorig:RightHandPinky3', 
-    'mixamorig:RightHandPinky4', 
-    'mixamorig:LeftUpLeg', 
-    'mixamorig:LeftLeg', 
-    'mixamorig:LeftFoot', 
-    'mixamorig:LeftToeBase', 
-    'mixamorig:LeftToe_End', 
-    'mixamorig:RightUpLeg', 
-    'mixamorig:RightLeg', 
-    'mixamorig:RightFoot', 
-    'mixamorig:RightToeBase', 
-    'mixamorig:RightToe_End']
-
-
+bind_transforms = compute_bind_transforms(joints, rest_transforms)
+print(bind_transforms)

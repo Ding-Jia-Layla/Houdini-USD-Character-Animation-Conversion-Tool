@@ -17,15 +17,15 @@ def stage_setting(stage):
     return stage,skelPath,skel_root
 def export_skeleton(stage,fbx_skel_node,skel):
     # structure of skeleton -- get
-    get_skeleton_data(fbx_skel_node)
+    joints, restTransforms = get_skeleton_data(fbx_skel_node)
     # set up for the skeleton -- set
-    # joints, bindTransforms, restTransforms,root_name = setup_skeleton(_joints, bindTransforms, restTransforms, root_name,skel)
+    setup_skeleton(joints,restTransforms,skel)
 
 
 def get_skeleton_data(fbx_skel_node):
     joints = []
-    bindTransforms = []
     restTransforms = []
+    restTransforms_dict = {}
     points_original = fbx_skel_node.geometry().points()
     # TODO:还是得找根节点： 找路径里最长的然后获取它的第一个就是根节点
     max_path_length = 0
@@ -48,8 +48,37 @@ def get_skeleton_data(fbx_skel_node):
         parent_name = parts[-2]
         joints_relationship_dict[current_name] = parent_name
     # print(f"root_name is : {root_name}, mesh_index: {mesh_index}")
-    
-    
+    # TODO: 先拿到每个关节的restTransform并且塞入字典
+    joints_names=[]
+    for index, point in enumerate(points_original):
+        if index != mesh_index:
+            joints.append(point.stringAttribValue('path'))
+            joints_names.append(point.stringAttribValue('name'))
+            transformation_matrix_original = point.floatListAttribValue('transform')
+            translations = point.floatListAttribValue('P')
+            restTransform = Gf.Matrix4d([
+                [transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2], translations[0]],
+                [transformation_matrix_original[3], transformation_matrix_original[4], transformation_matrix_original[5], translations[1]],
+                [transformation_matrix_original[6], transformation_matrix_original[7], transformation_matrix_original[8], translations[2]],
+                [0, 0, 0, 1]
+                ])
+            restTransforms_dict[point.stringAttribValue('name')] = restTransform
+    restTransforms = [restTransforms_dict[joint] for joint in joints_names]
+    return joints,restTransforms
+def setup_skeleton(joints, restTransforms, skel):
+    topo = UsdSkel.Topology(Vt.TokenArray([joint.replace(":", "_")for joint in joints]))
+    valid, reason = topo.Validate()
+    if not valid:
+        Tf.Warn("Invalid topology: %s" % reason) 
+    numJoints = len(joints)
+    # if numJoints:
+    #     print("Joints number: %s" %numJoints)
+    jointTokens = Vt.TokenArray([joint.replace(":", "_") for joint in joints])
+    skel.GetJointsAttr().Set(jointTokens)
+    topology = UsdSkel.Topology(skel.GetJointsAttr().Get())    
+    # bindTransforms 
+    skel.GetRestTransformsAttr().Set(Vt.Matrix4dArray(restTransforms))
+
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'
     _stage = Usd.Stage.CreateNew(usd_file_path)
