@@ -62,6 +62,7 @@ def get_skeleton_data(fbx_skel_node):
             parent_name = parts[-2]
             joints_relationship_dict[current_name] = parent_name
     # print(f"root_name is : {root_name}, mesh_index: {mesh_index}")
+
     for index, point in enumerate(points_original):
         if index != mesh_index:
             joints.append(point.stringAttribValue('path'))
@@ -86,11 +87,8 @@ def get_skeleton_data(fbx_skel_node):
     restTransforms = list(rest_transform_dict.values())
     root_bindTransform = bind_transform_dict[root_name]
     root_restTransform = rest_transform_dict[root_name]
-    # print(f"restTransform of root: {root_restTransform}, bindTransform of root: {root_bindTransform}, root name: {root_name}")
     geom_bindTransform = root_bindTransform * root_restTransform.GetInverse()
-    # print(f"geomBindTransform: {geom_bindTransform}")
-    # print(f"restTransformdict:{restTransforms_dict}")
-    return joints, bindTransforms, restTransforms,geom_bindTransform, root_name,mesh_index
+    return joints, bindTransforms, restTransforms,geom_bindTransform, root_name,mesh_index,joints_relationship_dict
 
 def setup_mesh(mesh, points, normals, face_vertex_counts, face_vertex_indices):
     # 0->11
@@ -165,82 +163,77 @@ def export_skinning(geometry,skel,mesh,geom_bindTransform):
 def export_skeleton(stage,fbx_skel_node,skel):
     # structure of skeleton -- get
     # joints, bindTransforms, restTransforms,geom_bindTransform, root_name
-    joints, bindTransforms, restTransforms,geom_bindTransform, root_name,mesh_index= get_skeleton_data(fbx_skel_node)
+    joints, bindTransforms, restTransforms,geom_bindTransform, root_name,mesh_index,joints_relationship_dict= get_skeleton_data(fbx_skel_node)
     # set up for the skeleton -- set
     setup_skeleton(joints,bindTransforms,restTransforms,skel)
-    return joints,geom_bindTransform,mesh_index
+    return joints,geom_bindTransform,mesh_index,joints_relationship_dict
 
-def export_animation(stage,fbx_anim_node,skel,skelAnim,joints,mesh_index):
+def export_animation(stage,fbx_anim_node,skel,skelAnim,joints,mesh_index,joints_relationship_dict):
     joints_anim = Vt.TokenArray([joint.lstrip('/').replace(":", "_") for joint in joints])
     skelAnim.CreateJointsAttr().Set(joints_anim)
     anim_node = fbx_anim_node.geometry()
     start_frame = hou.playbar.playbackRange()[0]
     end_frame = hou.playbar.playbackRange()[1]
     points = anim_node.points()
-    len_points = len(points)
-    len_joints = len(joints)
-    print(f"mesh_index: {mesh_index}")
-    # 66 65
-    # print(len_points,len_joints)
-    # print(f"mesh_index: {mesh_index}") # 0
-    # mesh_point = anim_node.points()[mesh_index].attribValue('name')
-    # print(f"mesh_point : {mesh_point}")
-    
-    #hip_node_transform = anim_node.points()[1].floatListAttribValue('transform')
-    #hip_node_p = anim_node.points()[1].floatListAttribValue('P')
-    matrix4 = hou.Matrix4([0.9505102038383484, 
-                -0.22681815922260284, 
-                0.2123296558856964,
-                -3.9795665740966797,
-                0.2441982924938202, 
-                0.9679160118103027, 
-                -0.059210024774074554,
-                94.88111114501953, 
-                -0.19208736717700958, 
-                0.10813027620315552, 
-                0.9754026532173157,
-                17.341978073120117,
-                0, 0, 0, 1])
-    # print(f"scale: {matrix4.extractScales()}, rotate matrix:{matrix4.extractRotationMatrix3()}, rotate quaternion: {hou.Quaternion(matrix4.extractRotationMatrix3())}")
+    len_points = len(points) # 66
+    len_joints = len(joints) # 65
+    # ok
+    joints_list = [joint.split('/')[-1] for joint in joints]
+    # ok 'mixamorig:Hips': 0, 'mixamorig:Spine': 1, 'mixamorig:Spine1': 2...
+    name_to_index = {name: idx for idx, name in enumerate(joints_list)}
+    parent_indices = []
+    # print(joints_relationship_dict)
+    for joint in joints_list:
+        # print(f"current joint : {joint}")
+        parent_name = joints_relationship_dict[joint]  # 获取父关节名，如果不存在则返回None
+        if parent_name =='':
+            parent_indices.append(-1)
+        else:
+            parent_indices.append(name_to_index.get(parent_name, -1))
+    # 每一帧
     for frame in range(int(start_frame), int(end_frame) + 1):
         hou.setFrame(frame)
         translations_frame = [Gf.Vec3f(0, 0, 0)] * len(joints)
         rotations_frame = [Gf.Quatf(1, 0, 0, 0)] * len(joints)
         scales_frame = [Gf.Vec3f(1, 1, 1)] * len(joints)
-        joint_index = 0
+        matrix_joints_frame = [hou.Matrix4([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1])] * len(joints)
+        # 每一个关节
+        joint_index =0 
         for index, point in enumerate(points):
             if index != mesh_index:
                 transformation_matrix_original = point.floatListAttribValue('transform')
                 translations = point.floatListAttribValue('P')
-                translations_vec = Gf.Vec3f(translations[0], translations[1], translations[2])
+                joint_name = point.stringAttribValue('name')
+                # 
                 matrix4 = hou.Matrix4(
-                [transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2], translations[0],
-                transformation_matrix_original[3], transformation_matrix_original[4], transformation_matrix_original[5], translations[1],
-                transformation_matrix_original[6], transformation_matrix_original[7], transformation_matrix_original[8], translations[2],
-                0, 0, 0, 1])
-                # if mesh_index == 0:
-                #     if joint_index==0 and frame ==1:
-                #         print(f"joint_name: {points[joint_index+1].stringAttribValue('name')}, joint matrix: {matrix4}")
-                # else:# mesh_index == len(points)
-                #     if frame == 10 and index == 1:
-                #         print(f"joint_name: {points[1].stringAttribValue('name')}, joint matrix: {matrix4}")
-                #         q = hou.Quaternion(matrix4.extractRotationMatrix3())
-                #         print(Gf.Quatf(q[3], q[0], q[1], q[2]))
-                        
-                quaternion = hou.Quaternion(matrix4.extractRotationMatrix3())
-                # quaternion= hou.Quaternion(transformation_matrix)
-                rotations_frame[joint_index] = Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])
-                scale =matrix4.extractScales()
-                scales_frame[joint_index] = Gf.Vec3f(scale[0], scale[1], scale[2])
-                translations_frame[joint_index] = Gf.Vec3f(translations_vec[0], translations_vec[1], translations_vec[2])
-                # check hip
-                if joint_index == 0 and frame ==1:
-                    # points比 joints少一个 如果是最后的mesh就直接是index,开头的话就得+1
-                    print(points[joint_index+1].stringAttribValue('name'))
-                    print(matrix4)
-                    print(matrix4.extractRotationMatrix3())
-                    print(Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2]))
-                joint_index +=1
+                [[transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2], 0],
+                [transformation_matrix_original[3], transformation_matrix_original[4], transformation_matrix_original[5], 0],
+                [transformation_matrix_original[6], transformation_matrix_original[7], transformation_matrix_original[8], 0],
+                [translations[0], translations[1], translations[2], 1]])
+                # 这里joint_index的顺序和本来的关节顺序不一致 似乎
+                matrix_joints_frame[joint_index] = matrix4
+                joint_index+=1
+        # print(f"length of matrix: {len(matrix_joints_frame)} ") 65
+        for index, global_matrix in enumerate(matrix_joints_frame):
+            if parent_indices[index] == -1:
+                local_matrix = global_matrix
+                # if frame == 1:
+                #     print(f"the frame 1 root matrix: {local_matrix}, index of root: {index}")
+            else:
+                # print(index,parent_indices[index])
+                parent_global_matrix = matrix_joints_frame[parent_indices[index]]
+                local_matrix = global_matrix* parent_global_matrix.inverted() 
+            #local_matrices_frame.append(local_matrix)
+            quaternion = hou.Quaternion(local_matrix.extractRotationMatrix3())
+            rotations_frame[index] = Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])
+            scale =local_matrix.extractScales()
+            scales_frame[index] = Gf.Vec3f(scale[0], scale[1], scale[2])
+            translation = local_matrix.extractTranslates()
+            translations_frame[index] = Gf.Vec3f(translation[0], translation[1], translation[2])
+            if frame == 1 and index == 0:
+                print(f"rotation:{local_matrix.extractRotationMatrix3()}")
+                print(f"Quatrotation:{Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])}")
+                print(f"the frame 1 root matrix: {local_matrix}, translation: {translation}")
         skelAnim.CreateRotationsAttr().Set(Vt.QuatfArray(rotations_frame), Usd.TimeCode(frame))  
         skelAnim.CreateScalesAttr().Set(Vt.Vec3fArray(scales_frame),Usd.TimeCode(frame))
         skelAnim.CreateTranslationsAttr().Set(Vt.Vec3fArray(translations_frame),Usd.TimeCode(frame)) 
@@ -262,10 +255,10 @@ def export_usd():
     fbx_anim_node = input_node_name.node('fbxanimimport2')
     fbx_skin_node = input_node_name.node('fbxskinimport1')
     geometry = fbx_skin_node.geometry()
-    joints, geom_bindTransform, mesh_index = export_skeleton(stage,fbx_skel_node,skel)
+    joints, geom_bindTransform, mesh_index,joints_relationship_dict = export_skeleton(stage,fbx_skel_node,skel)
     # mesh = export_geometry(stage, geometry)
     # export_skinning(geometry,skel,mesh,geom_bindTransform)
-    export_animation(stage,fbx_anim_node,skel,skelAnim,joints, mesh_index)
+    export_animation(stage,fbx_anim_node,skel,skelAnim,joints, mesh_index,joints_relationship_dict)
     stage.GetRootLayer().Save()
 
 export_usd()
