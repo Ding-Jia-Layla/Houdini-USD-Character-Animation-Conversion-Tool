@@ -135,20 +135,31 @@ def export_geometry(stage, geometry):
     mesh = UsdGeom.Mesh.Define(stage, f'/Model/Arm')
     setup_mesh(mesh, points, normals, face_vertex_counts, face_vertex_indices)
     return mesh
-def export_skinning(geometry,skel,mesh,geom_bindTransform):
+def export_skinning(geometry,skel,mesh,geom_bindTransform,joints_list):
     skinBinding = UsdSkel.BindingAPI.Apply(mesh.GetPrim())
     skinBinding.CreateSkeletonRel().SetTargets([skel.GetPath()])
     skin_node_points = geometry.points()
     joint_indices =[]
     joint_weights =[]
     len_bone_capture = len(skin_node_points[0].attribValue('boneCapture'))//2
+    # capt_joints
+    # 这个获取到的对象是capt_name里的顺序
+    # print(skin_node_points[3078].attribValue('boneCapture'))
+    # if skin_node_points[0].attribValue('boneCapture_regn[0]'):
+    #     print(skin_node_points[0].attribValue('boneCapture_regn[0]'))
+    # else:
+    #     print("no this attr")
+    capt_names = geometry.stringListAttribValue('capt_names')
     for point in skin_node_points:
         if (point.attribValue('boneCapture')):
             bone_capture = point.attribValue('boneCapture')
+            
             for i in range(0,len(bone_capture),2):
-                joint_index = bone_capture[i]
+                index_capt = bone_capture[i]
+                joint_name_capt = capt_names[int(index_capt)]
+                joint_index = joints_list.index(joint_name_capt)
                 joint_weight = bone_capture[i+1]
-                if joint_weight == -1.0 and joint_weight == -1.0:
+                if  index_capt == -1.0 and joint_weight == -1.0:
                     joint_indices.append(0)
                     joint_weights.append(0.0)
                 else:
@@ -217,27 +228,24 @@ def export_animation(stage,fbx_anim_node,skel,skelAnim,joints,mesh_index,joints_
         for index, global_matrix in enumerate(matrix_joints_frame):
             if parent_indices[index] == -1:
                 local_matrix = global_matrix
-                # if frame == 1:
-                #     print(f"the frame 1 root matrix: {local_matrix}, index of root: {index}")
             else:
                 # print(index,parent_indices[index])
                 parent_global_matrix = matrix_joints_frame[parent_indices[index]]
                 local_matrix = global_matrix* parent_global_matrix.inverted() 
-            #local_matrices_frame.append(local_matrix)
             quaternion = hou.Quaternion(local_matrix.extractRotationMatrix3())
             rotations_frame[index] = Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])
             scale =local_matrix.extractScales()
             scales_frame[index] = Gf.Vec3f(scale[0], scale[1], scale[2])
             translation = local_matrix.extractTranslates()
             translations_frame[index] = Gf.Vec3f(translation[0], translation[1], translation[2])
-            if frame == 1 and index == 0:
-                print(f"rotation:{local_matrix.extractRotationMatrix3()}")
-                print(f"Quatrotation:{Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])}")
-                print(f"the frame 1 root matrix: {local_matrix}, translation: {translation}")
+            # if frame == 1 and index == 0:
+            #     print(f"rotation:{local_matrix.extractRotationMatrix3()}")
+            #     print(f"Quatrotation:{Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])}")
+            #     print(f"the frame 1 root matrix: {local_matrix}, translation: {translation}")
         skelAnim.CreateRotationsAttr().Set(Vt.QuatfArray(rotations_frame), Usd.TimeCode(frame))  
         skelAnim.CreateScalesAttr().Set(Vt.Vec3fArray(scales_frame),Usd.TimeCode(frame))
         skelAnim.CreateTranslationsAttr().Set(Vt.Vec3fArray(translations_frame),Usd.TimeCode(frame)) 
-                
+    return joints_list         
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'
     _stage = Usd.Stage.CreateNew(usd_file_path)
@@ -256,9 +264,9 @@ def export_usd():
     fbx_skin_node = input_node_name.node('fbxskinimport1')
     geometry = fbx_skin_node.geometry()
     joints, geom_bindTransform, mesh_index,joints_relationship_dict = export_skeleton(stage,fbx_skel_node,skel)
-    # mesh = export_geometry(stage, geometry)
-    # export_skinning(geometry,skel,mesh,geom_bindTransform)
-    export_animation(stage,fbx_anim_node,skel,skelAnim,joints, mesh_index,joints_relationship_dict)
+    mesh = export_geometry(stage, geometry)
+    joints_list = export_animation(stage,fbx_anim_node,skel,skelAnim,joints, mesh_index,joints_relationship_dict)
+    export_skinning(geometry,skel,mesh,geom_bindTransform,joints_list)
     stage.GetRootLayer().Save()
 
 export_usd()
