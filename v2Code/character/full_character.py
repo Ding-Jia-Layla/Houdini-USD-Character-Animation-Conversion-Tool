@@ -235,17 +235,17 @@ def export_animation(stage,fbx_node,skel,skelAnim,joints,_joints,root_name):
                         transformation_matrix_original[6],transformation_matrix_original[7],transformation_matrix_original[8]))
                 quaternion= hou.Quaternion(transformation_matrix)
                 # 应该是66关节
-                # print(f"index of old: {index}, index of new: {joints.index(_joints[index])}") 
-                # new_index = joints.index(_joints[index])
-                # rotations_frame[new_index] = Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])
-                # # scale
-                # scale =matrix4.extractScales()
-                # scales_frame[new_index] = Gf.Vec3f(scale[0], scale[1], scale[2])
-                # translations_frame[new_index] = Gf.Vec3f(translations_vec[0], translations_vec[1], translations_vec[2])
-            # print(f"length of rotations_frame: {len(rotations_frame)}, length of scales: {len(scales_frame)}, length of translation: {len(translations_frame)}")
-        # skelAnim.CreateRotationsAttr().Set(Vt.QuatfArray(rotations_frame), Usd.TimeCode(frame))  
-        # skelAnim.CreateScalesAttr().Set(Vt.Vec3fArray(scales_frame),Usd.TimeCode(frame))
-        # skelAnim.CreateTranslationsAttr().Set(Vt.Vec3fArray(translations_frame),Usd.TimeCode(frame)) 
+                print(f"index of old: {index}, index of new: {joints.index(_joints[index])}") 
+                new_index = joints.index(_joints[index])
+                rotations_frame[new_index] = Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])
+                # scale
+                scale =matrix4.extractScales()
+                scales_frame[new_index] = Gf.Vec3f(scale[0], scale[1], scale[2])
+                translations_frame[new_index] = Gf.Vec3f(translations_vec[0], translations_vec[1], translations_vec[2])
+            print(f"length of rotations_frame: {len(rotations_frame)}, length of scales: {len(scales_frame)}, length of translation: {len(translations_frame)}")
+        skelAnim.CreateRotationsAttr().Set(Vt.QuatfArray(rotations_frame), Usd.TimeCode(frame))  
+        skelAnim.CreateScalesAttr().Set(Vt.Vec3fArray(scales_frame),Usd.TimeCode(frame))
+        skelAnim.CreateTranslationsAttr().Set(Vt.Vec3fArray(translations_frame),Usd.TimeCode(frame)) 
             
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'

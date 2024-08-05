@@ -171,8 +171,8 @@ def export_skinning(_joints,joints,fbx_node,skel,mesh,geom_bindTransform):
     joint_indices =[]
     joint_weights =[]
     len_bone_capture = len(skin_node_points[0].attribValue('boneCapture'))//2
-    head_original_point = skin_node_points[0].attribValue('boneCapture')[0]
-    print(f"point 0's bone new index is : {joints.index(_joints[int(head_original_point)])}")
+    # head_original_point = skin_node_points[0].attribValue('boneCapture')[0]
+    # print(f"point 0's bone new index is : {joints.index(_joints[int(head_original_point)])}")
     for point in skin_node_points:
         if (point.attribValue('boneCapture')):
             bone_capture = point.attribValue('boneCapture')
@@ -192,7 +192,9 @@ def export_skinning(_joints,joints,fbx_node,skel,mesh,geom_bindTransform):
     joint_indices_attr = skinBinding.CreateJointIndicesPrimvar(False, len_bone_capture).Set(joint_indices)
     joint_weights_attr = skinBinding.CreateJointWeightsPrimvar(False, len_bone_capture).Set(joint_weights)
     geom_bindTransform_attr = skinBinding.CreateGeomBindTransformAttr(geom_bindTransform)
-  
+
+
+
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'
     _stage = Usd.Stage.CreateNew(usd_file_path)

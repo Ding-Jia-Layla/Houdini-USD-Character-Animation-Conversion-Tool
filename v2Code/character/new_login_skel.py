@@ -15,22 +15,17 @@ def stage_setting(stage):
     Usd.ModelAPI(skel_root).SetKind(Kind.Tokens.component)
     skelPath = skelRootPath.AppendChild("Skel")
     return stage,skelPath,skel_root
-def export_skeleton(stage,fbx_skel_node,skel):
-    # structure of skeleton -- get
-    # joints, bindTransforms, restTransforms,geom_bindTransform, root_name
-    joints, bindTransforms, restTransforms,geom_bindTransform, root_name= get_skeleton_data(fbx_skel_node)
-    # set up for the skeleton -- set
-    setup_skeleton(joints,bindTransforms,restTransforms,skel)
-    
+
 def setup_skeleton(joints,bindTransforms,restTransforms,skel):
-    topo = UsdSkel.Topology(Vt.TokenArray([joint.replace(":", "_")for joint in joints]))
+    
+    topo = UsdSkel.Topology(Vt.TokenArray([joint.lstrip('/').replace(":", "_") for joint in joints]))
     valid, reason = topo.Validate()
     if not valid:
         Tf.Warn("Invalid topology: %s" % reason) 
     numJoints = len(joints)
     # if numJoints:
     #     print("Joints number: %s" %numJoints)
-    jointTokens = Vt.TokenArray([joint.replace(":", "_") for joint in joints])
+    jointTokens = Vt.TokenArray([joint.lstrip('/').replace(":", "_") for joint in joints])
     skel.GetJointsAttr().Set(jointTokens)
     topology = UsdSkel.Topology(skel.GetJointsAttr().Get())    
     # bindTransforms 
@@ -43,7 +38,6 @@ def get_skeleton_data(fbx_skel_node):
     joints = []
     bind_transform_dict = {}
     points_original = fbx_skel_node.geometry().points()
-    # TODO:还是得找根节点： 找路径里最长的然后获取它的第一个就是根节点
     max_path_length = 0
     root_name = None
     mesh_index = None 
@@ -92,9 +86,11 @@ def get_skeleton_data(fbx_skel_node):
     restTransforms = list(rest_transform_dict.values())
     root_bindTransform = bind_transform_dict[root_name]
     root_restTransform = rest_transform_dict[root_name]
-    geom_bindTransform = root_bindTransform * root_restTransform
+    # print(f"restTransform of root: {root_restTransform}, bindTransform of root: {root_bindTransform}, root name: {root_name}")
+    geom_bindTransform = root_bindTransform * root_restTransform.GetInverse()
+    # print(f"geomBindTransform: {geom_bindTransform}")
     # print(f"restTransformdict:{restTransforms_dict}")
-    return joints, bindTransforms, restTransforms,geom_bindTransform, root_name
+    return joints, bindTransforms, restTransforms,geom_bindTransform, root_name,mesh_index
 
 def setup_mesh(mesh, points, normals, face_vertex_counts, face_vertex_indices):
     # 0->11
@@ -141,7 +137,114 @@ def export_geometry(stage, geometry):
     mesh = UsdGeom.Mesh.Define(stage, f'/Model/Arm')
     setup_mesh(mesh, points, normals, face_vertex_counts, face_vertex_indices)
     return mesh
+def export_skinning(geometry,skel,mesh,geom_bindTransform):
+    skinBinding = UsdSkel.BindingAPI.Apply(mesh.GetPrim())
+    skinBinding.CreateSkeletonRel().SetTargets([skel.GetPath()])
+    skin_node_points = geometry.points()
+    joint_indices =[]
+    joint_weights =[]
+    len_bone_capture = len(skin_node_points[0].attribValue('boneCapture'))//2
+    for point in skin_node_points:
+        if (point.attribValue('boneCapture')):
+            bone_capture = point.attribValue('boneCapture')
+            for i in range(0,len(bone_capture),2):
+                joint_index = bone_capture[i]
+                joint_weight = bone_capture[i+1]
+                if joint_weight == -1.0 and joint_weight == -1.0:
+                    joint_indices.append(0)
+                    joint_weights.append(0.0)
+                else:
+                    joint_weights.append(joint_weight)
+                    joint_indices.append(joint_index)
+        else:
+            print("no boneCapture")  
+    joint_indices_attr = skinBinding.CreateJointIndicesPrimvar(False, len_bone_capture).Set(joint_indices)
+    joint_weights_attr = skinBinding.CreateJointWeightsPrimvar(False, len_bone_capture).Set(joint_weights)         
+    geom_bindTransform_attr = skinBinding.CreateGeomBindTransformAttr(geom_bindTransform)
 
+def export_skeleton(stage,fbx_skel_node,skel):
+    # structure of skeleton -- get
+    # joints, bindTransforms, restTransforms,geom_bindTransform, root_name
+    joints, bindTransforms, restTransforms,geom_bindTransform, root_name,mesh_index= get_skeleton_data(fbx_skel_node)
+    # set up for the skeleton -- set
+    setup_skeleton(joints,bindTransforms,restTransforms,skel)
+    return joints,geom_bindTransform,mesh_index
+
+def export_animation(stage,fbx_anim_node,skel,skelAnim,joints,mesh_index):
+    joints_anim = Vt.TokenArray([joint.lstrip('/').replace(":", "_") for joint in joints])
+    skelAnim.CreateJointsAttr().Set(joints_anim)
+    anim_node = fbx_anim_node.geometry()
+    start_frame = hou.playbar.playbackRange()[0]
+    end_frame = hou.playbar.playbackRange()[1]
+    points = anim_node.points()
+    len_points = len(points)
+    len_joints = len(joints)
+    print(f"mesh_index: {mesh_index}")
+    # 66 65
+    # print(len_points,len_joints)
+    # print(f"mesh_index: {mesh_index}") # 0
+    # mesh_point = anim_node.points()[mesh_index].attribValue('name')
+    # print(f"mesh_point : {mesh_point}")
+    
+    #hip_node_transform = anim_node.points()[1].floatListAttribValue('transform')
+    #hip_node_p = anim_node.points()[1].floatListAttribValue('P')
+    matrix4 = hou.Matrix4([0.9505102038383484, 
+                -0.22681815922260284, 
+                0.2123296558856964,
+                -3.9795665740966797,
+                0.2441982924938202, 
+                0.9679160118103027, 
+                -0.059210024774074554,
+                94.88111114501953, 
+                -0.19208736717700958, 
+                0.10813027620315552, 
+                0.9754026532173157,
+                17.341978073120117,
+                0, 0, 0, 1])
+    # print(f"scale: {matrix4.extractScales()}, rotate matrix:{matrix4.extractRotationMatrix3()}, rotate quaternion: {hou.Quaternion(matrix4.extractRotationMatrix3())}")
+    for frame in range(int(start_frame), int(end_frame) + 1):
+        hou.setFrame(frame)
+        translations_frame = [Gf.Vec3f(0, 0, 0)] * len(joints)
+        rotations_frame = [Gf.Quatf(1, 0, 0, 0)] * len(joints)
+        scales_frame = [Gf.Vec3f(1, 1, 1)] * len(joints)
+        joint_index = 0
+        for index, point in enumerate(points):
+            if index != mesh_index:
+                transformation_matrix_original = point.floatListAttribValue('transform')
+                translations = point.floatListAttribValue('P')
+                translations_vec = Gf.Vec3f(translations[0], translations[1], translations[2])
+                matrix4 = hou.Matrix4(
+                [transformation_matrix_original[0], transformation_matrix_original[1], transformation_matrix_original[2], translations[0],
+                transformation_matrix_original[3], transformation_matrix_original[4], transformation_matrix_original[5], translations[1],
+                transformation_matrix_original[6], transformation_matrix_original[7], transformation_matrix_original[8], translations[2],
+                0, 0, 0, 1])
+                # if mesh_index == 0:
+                #     if joint_index==0 and frame ==1:
+                #         print(f"joint_name: {points[joint_index+1].stringAttribValue('name')}, joint matrix: {matrix4}")
+                # else:# mesh_index == len(points)
+                #     if frame == 10 and index == 1:
+                #         print(f"joint_name: {points[1].stringAttribValue('name')}, joint matrix: {matrix4}")
+                #         q = hou.Quaternion(matrix4.extractRotationMatrix3())
+                #         print(Gf.Quatf(q[3], q[0], q[1], q[2]))
+                        
+                quaternion = hou.Quaternion(matrix4.extractRotationMatrix3())
+                # quaternion= hou.Quaternion(transformation_matrix)
+                rotations_frame[joint_index] = Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])
+                scale =matrix4.extractScales()
+                scales_frame[joint_index] = Gf.Vec3f(scale[0], scale[1], scale[2])
+                translations_frame[joint_index] = Gf.Vec3f(translations_vec[0], translations_vec[1], translations_vec[2])
+                # check hip
+                if joint_index == 0 and frame ==1:
+                    # points比 joints少一个 如果是最后的mesh就直接是index,开头的话就得+1
+                    print(points[joint_index+1].stringAttribValue('name'))
+                    print(matrix4)
+                    print(matrix4.extractRotationMatrix3())
+                    print(Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2]))
+                joint_index +=1
+        skelAnim.CreateRotationsAttr().Set(Vt.QuatfArray(rotations_frame), Usd.TimeCode(frame))  
+        skelAnim.CreateScalesAttr().Set(Vt.Vec3fArray(scales_frame),Usd.TimeCode(frame))
+        skelAnim.CreateTranslationsAttr().Set(Vt.Vec3fArray(translations_frame),Usd.TimeCode(frame)) 
+                
 def export_usd():
     usd_file_path = f'E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_{random.randint(1, 100)}.usda'
     _stage = Usd.Stage.CreateNew(usd_file_path)
@@ -159,8 +262,10 @@ def export_usd():
     fbx_anim_node = input_node_name.node('fbxanimimport2')
     fbx_skin_node = input_node_name.node('fbxskinimport1')
     geometry = fbx_skin_node.geometry()
-    export_skeleton(stage,fbx_skel_node,skel)
-    mesh = export_geometry(stage, geometry)
+    joints, geom_bindTransform, mesh_index = export_skeleton(stage,fbx_skel_node,skel)
+    # mesh = export_geometry(stage, geometry)
+    # export_skinning(geometry,skel,mesh,geom_bindTransform)
+    export_animation(stage,fbx_anim_node,skel,skelAnim,joints, mesh_index)
     stage.GetRootLayer().Save()
 
 export_usd()
