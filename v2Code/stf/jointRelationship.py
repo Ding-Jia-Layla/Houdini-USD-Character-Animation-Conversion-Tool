@@ -24,11 +24,5 @@ for joint in skeleton_hierarchy:
 for joint,path in joints_path.items():
     print(f"{path}")
 # Gf.Matrix4d 的构造函数期望接收 16 个单独的浮点数作为参数，而不是一个包含这些浮点数的元组。    
-example = [ (0.01, -0.0, 0.0, 0.0, 0.0, 0.01, -1.45519e-11, 0.0, -0.0, -8.67365e-21, 0.01, 0.0, 0.0, 1.36853, -0.0183984, 1.0), (-0.00103434, 0.00108028, -0.00988753, 0.0, 0.00994398, 0.000330021, -0.00100418, 0.0, 0.000217828, -0.009936, -0.00110837, 0.0, 0.633132, 1.27577, -0.0244756, 1.0)]
-matrix =[Gf.Matrix4d(A) for A in example]
-print(matrix)
-# get path
-# get each key, then add the value,
-# use the value as key, then get the value
-# until the value is None
-print(skeleton_hierarchy)
+joint_path = '/'.join(reversed(['root']))
+print(joint_path)

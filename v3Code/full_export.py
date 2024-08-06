@@ -17,7 +17,6 @@ def stage_setting(stage):
     return stage,skelPath,skel_root
 
 def setup_skeleton(joints,bindTransforms,restTransforms,skel):
-    
     topo = UsdSkel.Topology(Vt.TokenArray([joint.lstrip('/').replace(":", "_") for joint in joints]))
     valid, reason = topo.Validate()
     if not valid:
