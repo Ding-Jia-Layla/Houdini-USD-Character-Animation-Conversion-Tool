@@ -132,7 +132,7 @@ def get_geometry_data(geometry):
 def export_geometry(stage, geometry):
     # Get Geometry data
     points, normals, face_vertex_counts, face_vertex_indices = get_geometry_data(geometry)
-    mesh = UsdGeom.Mesh.Define(stage, f'/Model/Arm')
+    mesh = UsdGeom.Mesh.Define(stage, f'/Model/Mesh')
     setup_mesh(mesh, points, normals, face_vertex_counts, face_vertex_indices)
     return mesh
 def export_skinning(geometry,skel,mesh,geom_bindTransform,joints_list):
@@ -166,7 +166,6 @@ def export_skinning(geometry,skel,mesh,geom_bindTransform,joints_list):
 
 def export_skeleton(stage,fbx_skel_node,skel):
     # structure of skeleton -- get
-    # joints, bindTransforms, restTransforms,geom_bindTransform, root_name
     joints, bindTransforms, restTransforms,geom_bindTransform, root_name,mesh_index,joints_relationship_dict= get_skeleton_data(fbx_skel_node)
     # set up for the skeleton -- set
     setup_skeleton(joints,bindTransforms,restTransforms,skel)
@@ -188,8 +187,7 @@ def export_animation(stage,fbx_anim_node,skel,skelAnim,joints,mesh_index,joints_
     parent_indices = []
     # print(joints_relationship_dict)
     for joint in joints_list:
-        # print(f"current joint : {joint}")
-        parent_name = joints_relationship_dict[joint]  # 获取父关节名，如果不存在则返回None
+        parent_name = joints_relationship_dict[joint]  
         if parent_name =='':
             parent_indices.append(-1)
         else:
@@ -201,7 +199,6 @@ def export_animation(stage,fbx_anim_node,skel,skelAnim,joints,mesh_index,joints_
         rotations_frame = [Gf.Quatf(1, 0, 0, 0)] * len(joints)
         scales_frame = [Gf.Vec3f(1, 1, 1)] * len(joints)
         matrix_joints_frame = [hou.Matrix4([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1])] * len(joints)
-        # 每一个关节
         joint_index =0 
         for index, point in enumerate(points):
             if index != mesh_index:
@@ -221,7 +218,6 @@ def export_animation(stage,fbx_anim_node,skel,skelAnim,joints,mesh_index,joints_
             if parent_indices[index] == -1:
                 local_matrix = global_matrix
             else:
-                # print(index,parent_indices[index])
                 parent_global_matrix = matrix_joints_frame[parent_indices[index]]
                 local_matrix = global_matrix* parent_global_matrix.inverted() 
             quaternion = hou.Quaternion(local_matrix.extractRotationMatrix3())

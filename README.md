@@ -19,21 +19,8 @@ usd文件会有混合形状在SOP失效的问题
 
 
 - [ ] usd→SOP(without LOP)
-
-**导出**的话就是
-
-- [ ] (boneDeform)node→usd
-    - [ ] houdini export usd 
-        - [x] geo(mesh) -py
-        - [ ] rig
-        - [ ] anim
-- [x] fbx(boneDeform)→usd
-    - [x] houdini export usd 
-        - [x] geo(mesh) -py
-        - [x] rig
-        - [x] anim
-- 不管是节点还是fbx最后的节点都是boneDeform，那么从boneDeform开始比较好
-UsdSkel Schema: https://openusd.org/dev/api/_usd_skel__schemas.html#UsdSkel_Skeleton
+18.5的rig tree没有复杂功能拖拽功能
+https://www.sidefx.com/docs/houdini18.5/character/rigtreeview.html
 
 - [ ] character usd
     - [ ] blend shape `OR` without blend shape
