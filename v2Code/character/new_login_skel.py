@@ -256,9 +256,9 @@ def export_usd():
     fbx_skin_node = input_node_name.node('fbxskinimport1')
     geometry = fbx_skin_node.geometry()
     joints, geom_bindTransform, mesh_index,joints_relationship_dict = export_skeleton(stage,fbx_skel_node,skel)
-    mesh = export_geometry(stage, geometry)
-    joints_list = export_animation(stage,fbx_anim_node,skel,skelAnim,joints, mesh_index,joints_relationship_dict)
-    export_skinning(geometry,skel,mesh,geom_bindTransform,joints_list)
+    # mesh = export_geometry(stage, geometry)
+    # joints_list = export_animation(stage,fbx_anim_node,skel,skelAnim,joints, mesh_index,joints_relationship_dict)
+    # export_skinning(geometry,skel,mesh,geom_bindTransform,joints_list)
     stage.GetRootLayer().Save()
 
 export_usd()

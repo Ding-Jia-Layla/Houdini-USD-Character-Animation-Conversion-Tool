@@ -1,60 +1,10 @@
-import numpy as np
-import math
-from scipy.spatial.transform import Rotation as R
-m11, m21, m31, m12, m22, m32, m13, m23, m33 = 1.0, 0.0, 0.0, 0.0, 1.9307546608615667e-05, 0.9999807476997375, 0.0, -0.9999807476997375, 1.9307546608615667e-05
-rotation_matrix_np = np.array([[m11, m12, m13],
-                            [m21, m22, m23],
-                            [m31, m32, m33]])
-Rh = hou.Matrix3((m11, m12, m13, m21, m22, m23, m31, m32, m33)
-
-rotation_np = R.from_matrix(rotation_matrix_np)
-quaternion_scipy = rotation_np.as_quat()
-quaternion_other = [quaternion_scipy[3], quaternion_scipy[0], quaternion_scipy[1], quaternion_scipy[2]]
-print(f"quaternion :{quaternion_other}")
-
-mat = hou.Matrix4([
-    1, 0, 0, 2,
-    0, 1, 0, 3,
-    0, 0, 1, 4,
-    0, 0, 0, 1
-scale = mat.extractScales()
-print("Extractedscale:", scale)
-
-# import numpy as np
-# from pxr import Gf
-
-# # 假设 bindTransform 和 restTransform 矩阵
-# bindTransform = np.array([
-#     [1, 0, 0, 2],
-#     [0, 1, 0, 3],
-#     [0, 0, 1, 4],
-#     [0, 0, 0, 1]
-# ])
-
-# restTransform = np.array([
-#     [1, 0, 0, 0],
-#     [0, 1, 0, 0],
-#     [0, 0, 1, 0],
-#     [0, 0, 0, 1]
-# ])
 
 
-# # 计算 restTransform 的逆矩阵
-# restTransform_inv = np.linalg.inv(restTransform)
 
-# # 计算 geomBindTransform
-# geomBindTransform = np.dot(bindTransform, restTransform_inv)
-
-# # 将 geomBindTransform 转换为 Gf.Matrix4d 格式
-# gf_geomBindTransform = Gf.Matrix4d(geomBindTransform)
-
-# mius_geomBindTransform = np.dot(bindTransform,restTransform)
-# print("geomBindTransform:\n", geomBindTransform)
-# print("Gf.Matrix4d geomBindTransform:\n", gf_geomBindTransform)
-# print(mius_geomBindTransform)
 
 
 from pxr import Gf
+# import hou
 
 restTransforms = [
     Gf.Matrix4d(1, 0, 0, 0,
@@ -68,13 +18,15 @@ restTransforms = [
     Gf.Matrix4d(1, 0, 0, 0,
                 0, 1, 0, 0,
                 0, 0, 1, 0,
-                0, 0, 4, 1)   
+                0, 0, 2, 1)   
 ]
-
-bindTransforms= [
-    Gf.Matrix4d(1, 0, 0, 1,
-                0, 1, 0, 2,
-                0, 0, 1, 3,
+bindTransform_1 = restTransforms[1] * restTransforms[0]
+bindTransform_2 = restTransforms[2] * bindTransform_1
+print(bindTransform_2)
+bindTransforms = [
+    Gf.Matrix4d(1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
                 0, 0, 0, 1), 
     Gf.Matrix4d(1, 0, 0, 0,
                 0, 1, 0, 0,
@@ -83,10 +35,71 @@ bindTransforms= [
     Gf.Matrix4d(1, 0, 0, 0,
                 0, 1, 0, 0,
                 0, 0, 1, 0,
-                0, 0, 2, 1)   
+                0, 0, 4, 1)   
 ]
-mius_geomBindTransform = bindTransforms[0]*restTransforms[0]
-print(mius_geomBindTransform)
+#bindTransform[child]=restTransform[child]×bindTransform[parent]
+# 相对矩阵 = 子关节的世界坐标*父关节的世界坐标变换撤销
+restTransform = bindTransforms[1] * bindTransforms[0].GetInverse()
+print(restTransform)
+
+identity_matrix = Gf.Matrix4f()
+print(identity_matrix)
+
+from pxr import Gf
+
+# 创建一个四元数，参数为 (w, x, y, z)
+# 示例中我们使用一个简单的四元数来表示围绕Y轴的旋转
+quat = Gf.Quatf(1.0, Gf.Vec3f(0.0, 1.0, 0.0))
+
+# 将四元数转换为旋转矩阵
+rotation_matrix = quat.GetMatrix3f()
+
+print("Rotation Matrix from Quaternion:")
+print(rotation_matrix)
+
+
+import numpy as np
+ 
+def quaternion_rotation_matrix(Q):
+    """
+    Covert a quaternion into a full three-dimensional rotation matrix.
+ 
+    Input
+    :param Q: A 4 element array representing the quaternion (q0,q1,q2,q3) 
+ 
+    Output
+    :return: A 3x3 element matrix representing the full 3D rotation matrix. 
+             This rotation matrix converts a point in the local reference 
+             frame to a point in the global reference frame.
+    """
+    # Extract the values from Q
+    q0 = Q[0]
+    q1 = Q[1]
+    q2 = Q[2]
+    q3 = Q[3]
+     
+    # First row of the rotation matrix
+    r00 = 2 * (q0 * q0 + q1 * q1) - 1
+    r01 = 2 * (q1 * q2 - q0 * q3)
+    r02 = 2 * (q1 * q3 + q0 * q2)
+     
+    # Second row of the rotation matrix
+    r10 = 2 * (q1 * q2 + q0 * q3)
+    r11 = 2 * (q0 * q0 + q2 * q2) - 1
+    r12 = 2 * (q2 * q3 - q0 * q1)
+     
+    # Third row of the rotation matrix
+    r20 = 2 * (q1 * q3 - q0 * q2)
+    r21 = 2 * (q2 * q3 + q0 * q1)
+    r22 = 2 * (q0 * q0 + q3 * q3) - 1
+     
+    # 3x3 rotation matrix
+    rot_matrix = np.array([[r00, r01, r02],
+                           [r10, r11, r12],
+                           [r20, r21, r22]])
+                            
+    return rot_matrix
+
 
 
 
