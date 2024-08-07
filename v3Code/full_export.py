@@ -242,7 +242,7 @@ def export_animation(stage,fbx_anim_node,skel,skelAnim,joints,mesh_index,joints_
                 local_matrix = global_matrix
             else:
                 parent_global_matrix = matrix_joints_frame[parent_indices[index]]
-                local_matrix = global_matrix* parent_global_matrix.inverted() 
+                local_matrix = global_matrix* parent_global_matrix.inverted()  
             quaternion = hou.Quaternion(local_matrix.extractRotationMatrix3())
             rotations_frame[index] = Gf.Quatf(quaternion[3], quaternion[0], quaternion[1], quaternion[2])
             scale =local_matrix.extractScales()

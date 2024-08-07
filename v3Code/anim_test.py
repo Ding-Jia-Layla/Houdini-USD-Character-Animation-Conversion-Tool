@@ -2,10 +2,9 @@ import hou
 from pxr import Usd, UsdGeom, Gf, UsdSkel
 # four joints arm
 
-def get_skel_data(stage,skeleton):
+def get_skel_anim_data(stage,skeleton,anim_prim):
     skel_bind_dict = {}
     positions_dict = {}
-    
     point_positions_list = []
     point_transforms_list = []
     prim = stage.GetPrimAtPath(skeleton)
@@ -55,13 +54,13 @@ def get_skel_data(stage,skeleton):
     # print(point_transforms_list)
     line_list = [(key, value) for key, value in list(joints_relationship_dict.items())][1:]
     poly_point_indices = tuple(line_list)
+    
+    
+    
     return point_positions_list,poly_point_indices,point_transforms_list,joints_children,joints_relationship_dict
 
-def set_up_skel(point_positions,poly_point_indices,point_transforms_list,joints_children,joints_relationship_dict):
+def set_up_skel_anim(point_positions,poly_point_indices,point_transforms_list,joints_children,joints_relationship_dict):
     transforms = []
-    # print(f"joints children list: {joints_children}") # joints list: ['arm_Shoulder', 'arm_Elbow', 'arm_Hand', 'arm_End']
-    #  print(f"parent and child relationship: {joints_relationship_dict}")
-    
     for point_transform in point_transforms_list:
         # print(tuple(point_transform))
         transforms.append(tuple(point_transform))
@@ -101,28 +100,18 @@ def set_up_skel(point_positions,poly_point_indices,point_transforms_list,joints_
             path.append(joints_children[current])
             current = joints_relationship_dict.get(current, -1)
         joints_path[joint] = '/'.join(reversed(path))
-    # get all path
-    # for joint,path in joints_path.items():
-    #     print(f"path: {path}")
-    # add attr: transform , name
+
     for i, point in enumerate(points):
         point.setAttribValue(name_attr_name, joints_children[i])
         point.setAttribValue(transform_attr_name, transforms[i])
         point.setAttribValue(path_attr_name,joints_path[i])
         
+    all_frames_matrice = get_animation_data(joints_path,anim_prim,joints_children,joints_relationship_dict)
+    
         # print(f"joint path: {joints_path[i]}")
     return joints_path,points
 
 
-def import_skel(stage,skeleton):
-    # skeleton prim:
-    # get the skeleton data
-    point_positions,poly_point_indices,point_transforms_list,joints_children,joints_relationship_dict= get_skel_data(stage,skeleton)
-    # set the skeleton data
-    joints_path, points = set_up_skel(point_positions,poly_point_indices,point_transforms_list,joints_children,joints_relationship_dict)
-    # print(joints_relationship_dict)
-    # {0: -1, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 3, 8: 7, 9: 8, 10: 9, 11: 10, 12: 11, 13: 12, 14: 13, 15: 10, 16: 15, 17: 16, 18: 17, 19: 10, 20: 19, 21: 20, 22: 21, 23: 10, 24: 23, 25: 24, 26: 25, 27: 10, 28: 27, 29: 28, 30: 29, 31: 3, 32: 31, 33: 32, 34: 33, 35: 34, 36: 35, 37: 36, 38: 37, 39: 34, 40: 39, 41: 40, 42: 41, 43: 34, 44: 43, 45: 44, 46: 45, 47: 34, 48: 47, 49: 48, 50: 49, 51: 34, 52: 51, 53: 52, 54: 53, 55: 0, 56: 55, 57: 56, 58: 57, 59: 58, 60: 0, 61: 60, 62: 61, 63: 62, 64: 63}
-    return joints_path, points,joints_relationship_dict, joints_children
 
 def get_animation_data(joints_path,anim_prim,joints_children,joints_relationship_dict):
     
@@ -156,8 +145,8 @@ def get_animation_data(joints_path,anim_prim,joints_children,joints_relationship
                 [L[1][0],L[1][1],L[1][2],L[1][3]],
                 [L[2][0],L[2][1],L[2][2],L[2][3]],
                 [L[3][0],L[3][1],L[3][2],L[3][3]]])
-            # if time ==1 and index == 0:
-            #     print(f"{joints_children[0]} local transform: {local_matrix}")
+            if time ==1 and index == 0:
+                print(f"{joints_children[0]} local transform: {local_matrix}")
             # index自动是这个序列对应骨架的列表
             each_frames_matrice.append(local_matrix)
         bind_transforms = [None] * len(each_frames_matrice)
@@ -170,31 +159,34 @@ def get_animation_data(joints_path,anim_prim,joints_children,joints_relationship
         # bind transform上是某一帧的所有骨骼的矩阵数据
         # 存好所有帧的字典：{1：{matrices...}}
         all_frames_matrice[time] = bind_transforms
-    print(f"10 frame : {all_frames_matrice[10]}")
     return all_frames_matrice
         # 每当在播放，能找到目前的关键帧，根据当前的序号就当作key来用，把这些点赋值set
-
-    
-def import_animation(stage,anim,joints_path,joints_children,joints_relationship_dict):
-    anim_prim = stage.GetPrimAtPath(anim)
-    anim = UsdSkel.Animation(anim_prim)
-    all_frames_matrice = get_animation_data(joints_path,anim_prim,joints_children,joints_relationship_dict)
-    set_animation_data(all_frames_matrice)
     
 def set_animation_data(all_frames_matrice):
     current_frame = int(hou.frame())
     pass
+
+
 def import_usd():
     usd_file_path = "E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/arm_skel_export.usda"
     stage = Usd.Stage.Open(usd_file_path)
     
     skeleton = "/Model/Skel"
     anim = "/Model/Skel/Anim"
-    
+    anim_prim = stage.GetPrimAtPath(anim)
+    anim = UsdSkel.Animation(anim_prim)
     joints_path, points,joints_relationship_dict,joints_children= import_skel(stage,skeleton)
-    # import_mesh()
-    import_animation(stage,anim,joints_path,joints_children,joints_relationship_dict)
     # import_skinning()
-    
+
+def import_skel(stage,skeleton):
+    # skeleton prim:
+    # get the skeleton data
+    point_positions,poly_point_indices,point_transforms_list,joints_children,joints_relationship_dict= get_skel_anim_data(stage,skeleton)
+    # set the skeleton data
+    joints_path, points = set_up_skel_anim(point_positions,poly_point_indices,point_transforms_list,joints_children,joints_relationship_dict)
+    # print(joints_relationship_dict)
+    # {0: -1, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 3, 8: 7, 9: 8, 10: 9, 11: 10, 12: 11, 13: 12, 14: 13, 15: 10, 16: 15, 17: 16, 18: 17, 19: 10, 20: 19, 21: 20, 22: 21, 23: 10, 24: 23, 25: 24, 26: 25, 27: 10, 28: 27, 29: 28, 30: 29, 31: 3, 32: 31, 33: 32, 34: 33, 35: 34, 36: 35, 37: 36, 38: 37, 39: 34, 40: 39, 41: 40, 42: 41, 43: 34, 44: 43, 45: 44, 46: 45, 47: 34, 48: 47, 49: 48, 50: 49, 51: 34, 52: 51, 53: 52, 54: 53, 55: 0, 56: 55, 57: 56, 58: 57, 59: 58, 60: 0, 61: 60, 62: 61, 63: 62, 64: 63}
+    return joints_path, points,joints_relationship_dict, joints_children
+ 
 
 import_usd()
