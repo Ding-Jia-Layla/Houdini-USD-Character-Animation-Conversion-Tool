@@ -24,6 +24,7 @@ def compute_global_transforms(stage, skeleton_path):
 
     # Process each sampled time
     time_samples = rotation_attr.GetTimeSamples()
+    print(len(time_samples))
     for time in time_samples:
         rotations = rotation_attr.Get(time)
         scales = scale_attr.Get(time)
@@ -78,6 +79,6 @@ def find_parent_index(joint, joints):
         return -1  # Return -1 if the parent joint is not found in the list
 
 # Usage example
-stage = Usd.Stage.Open("export_character_anim.usda")
+stage = Usd.Stage.Open("E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_81.usda")
 global_transforms = compute_global_transforms(stage, "/Model/Skel")
-print(global_transforms[1])
+print(global_transforms[10])

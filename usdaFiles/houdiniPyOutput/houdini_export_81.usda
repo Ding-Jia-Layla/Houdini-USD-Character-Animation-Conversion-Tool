@@ -1,7 +1,7 @@
 #usda 1.0
 (
     defaultPrim = "Model"
-    endTimeCode = 60
+    endTimeCode = 10
     metersPerUnit = 0.01
     startTimeCode = 1
     upAxis = "Y"
