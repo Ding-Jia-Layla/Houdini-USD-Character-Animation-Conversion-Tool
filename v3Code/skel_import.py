@@ -124,66 +124,7 @@ def import_skel(stage,skeleton):
     # {0: -1, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 7: 3, 8: 7, 9: 8, 10: 9, 11: 10, 12: 11, 13: 12, 14: 13, 15: 10, 16: 15, 17: 16, 18: 17, 19: 10, 20: 19, 21: 20, 22: 21, 23: 10, 24: 23, 25: 24, 26: 25, 27: 10, 28: 27, 29: 28, 30: 29, 31: 3, 32: 31, 33: 32, 34: 33, 35: 34, 36: 35, 37: 36, 38: 37, 39: 34, 40: 39, 41: 40, 42: 41, 43: 34, 44: 43, 45: 44, 46: 45, 47: 34, 48: 47, 49: 48, 50: 49, 51: 34, 52: 51, 53: 52, 54: 53, 55: 0, 56: 55, 57: 56, 58: 57, 59: 58, 60: 0, 61: 60, 62: 61, 63: 62, 64: 63}
     return joints_path, points,joints_relationship_dict, joints_children
 
-def get_animation_data(joints_path,anim_prim,joints_children,joints_relationship_dict):
-    
-    joints_anims_list = anim_prim.GetAttribute("joints").Get()
-    # print(f"joint list: {joints_anims_list}")
-    all_attributes_strong = anim_prim.GetProperties()
-    all_attributes_space = anim_prim.GetAuthoredProperties()
-    all_frames_rotation = anim_prim.GetAttribute('rotations')
-    all_frames_scale = anim_prim.GetAttribute('scales')
-    all_frames_translations = anim_prim.GetAttribute('translations')
-    all_frames_matrice = {}
-    # num_frames_rotation = all_frames_rotation.GetNumTimeSamples()
-    # 1 frame : M(each joint matrix)* numJoint
-    time_samples = all_frames_rotation.GetTimeSamples()
-    for time in time_samples:
-        each_frames_matrice=[]
-        # hou: (x, y, z, and w)
-        # Gf:(w and x, y, z)
-        #rotation_quat_hou_values = [hou.Quaternion(hou_quaf.GetImaginary()[0],hou_quaf.GetImaginary()[1],hou_quaf.GetImaginary()[2],hou_quaf.GetReal()) for hou_quaf in all_frames_rotation.Get(time) ]
-        rotation_quaf_values = all_frames_rotation.Get(time)
-        scale_values = all_frames_scale.Get(time)
-        translations_values = all_frames_translations.Get(time)
-        L = Gf.Matrix4f()
-        # Vec3f 每一个关节
-        for index, rotate in enumerate(rotation_quaf_values):
-            L.SetScale(Gf.Vec3f(scale_values[index]))
-            L.SetRotate(rotate)
-            L.SetTranslateOnly(translations_values[index])
-            local_matrix = hou.Matrix4(
-                [[L[0][0],L[0][1],L[0][2],L[0][3]],
-                [L[1][0],L[1][1],L[1][2],L[1][3]],
-                [L[2][0],L[2][1],L[2][2],L[2][3]],
-                [L[3][0],L[3][1],L[3][2],L[3][3]]])
-            # if time ==1 and index == 0:
-            #     print(f"{joints_children[0]} local transform: {local_matrix}")
-            # index自动是这个序列对应骨架的列表
-            each_frames_matrice.append(local_matrix)
-        bind_transforms = [None] * len(each_frames_matrice)
-        for joint_index in range(len(each_frames_matrice)):
-            if joints_relationship_dict[joint_index] == -1:
-                bind_transforms[joint_index] = each_frames_matrice[joint_index]
-            else:
-                parent_global_transform = bind_transforms[joints_relationship_dict[joint_index]]
-                bind_transforms[joint_index] = parent_global_transform * each_frames_matrice[joint_index]
-        # bind transform上是某一帧的所有骨骼的矩阵数据
-        # 存好所有帧的字典：{1：{matrices...}}
-        all_frames_matrice[time] = bind_transforms
-    print(f"10 frame : {all_frames_matrice[10]}")
-    return all_frames_matrice
-        # 每当在播放，能找到目前的关键帧，根据当前的序号就当作key来用，把这些点赋值set
 
-    
-def import_animation(stage,anim,joints_path,joints_children,joints_relationship_dict):
-    anim_prim = stage.GetPrimAtPath(anim)
-    anim = UsdSkel.Animation(anim_prim)
-    all_frames_matrice = get_animation_data(joints_path,anim_prim,joints_children,joints_relationship_dict)
-    set_animation_data(all_frames_matrice)
-    
-def set_animation_data(all_frames_matrice):
-    current_frame = int(hou.frame())
-    pass
 def import_usd():
     usd_file_path = "E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/arm_skel_export.usda"
     stage = Usd.Stage.Open(usd_file_path)
@@ -193,7 +134,6 @@ def import_usd():
     
     joints_path, points,joints_relationship_dict,joints_children= import_skel(stage,skeleton)
     # import_mesh()
-    import_animation(stage,anim,joints_path,joints_children,joints_relationship_dict)
     # import_skinning()
     
 

@@ -62,10 +62,11 @@ def set_up_skel_anim(all_frames_matrix,point_positions,poly_point_indices,point_
     # transform_attr_name = 'transform'
     name_attr_name = 'name'
     path_attr_name = 'path'
-    
+    transform_attr_name = 'transform'
+    default_matrix4 = [1.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0]
     geo.addAttrib(hou.attribType.Point,name_attr_name,'jointName',transform_as_normal=False, create_local_variable=True)
     geo.addAttrib(hou.attribType.Point,path_attr_name,'parent/child',transform_as_normal=False, create_local_variable=True)
-    
+    transform_point_attr = geo.addAttrib(hou.attribType.Point,transform_attr_name,default_matrix4,transform_as_normal=False, create_local_variable=True)
     points = []
     
     for position in point_positions:
@@ -117,13 +118,13 @@ def set_up_skel_anim(all_frames_matrix,point_positions,poly_point_indices,point_
                 matrix = joints_positions_this_frame[idx]
                 # 提取矩阵的平移分量
                 translation = hou.Vector3(matrix.at(0,3),matrix.at(1,3),matrix.at(2,3))
+
+                transform = (matrix.at(0,0),matrix.at(1,0),matrix.at(2,0),matrix.at(0,1),matrix.at(1,1),matrix.at(2,1),matrix.at(0,2),matrix.at(1,2),matrix.at(2,2))
+
+                point.setAttribValue(transform_point_attr,transform)
                 # 设置点的位置
-                print(translation)
+                # print(translation)
                 point.setPosition(translation)
-        # for idx, pt in enumerate(geo.points()):
-        #     pt.setPosition()
-        #     if idx < len(joints_positions_this_frame):
-        #         pt.setPosition(hou.Vector3(*joints_positions_this_frame[idx]))
         
 def get_anim_data(anim_prim):
     # Get joints and transformation attributes
@@ -149,7 +150,6 @@ def get_anim_data(anim_prim):
             translation = translations[j]
             # if j == 2 and time == 10:
             #     print(f"10 frame translation:{translation}")
-
             # Create local transformation matrix
             _matrix = Gf.Matrix4d().SetIdentity()
             _matrix.SetScale(Gf.Vec3d(scale))
@@ -172,9 +172,9 @@ def get_anim_data(anim_prim):
                                 _matrix[0][1],_matrix[1][1],_matrix[2][1],_matrix[3][1],
                                 _matrix[0][2],_matrix[1][2],_matrix[2][2],_matrix[3][2],
                                 _matrix[0][3],_matrix[1][3],_matrix[2][3],_matrix[3][3]])
-            if j == 2 and time == 10:
-            # #     # col0: ( (1, 0, 0, 0), col1: (0, 0.053860843, 0.99854845, 0), col2: (0, -0.99854845, 0.053860843, 0), (0, 0, 2, 1) )
-                print(f"new matrix of time 10 and joint 2: {matrix}")
+            # if j == 2 and time == 10:
+            # # #     # col0: ( (1, 0, 0, 0), col1: (0, 0.053860843, 0.99854845, 0), col2: (0, -0.99854845, 0.053860843, 0), (0, 0, 2, 1) )
+            #     print(f"new matrix of time 10 and joint 2: {matrix}")
             # Accumulate to the global matrix
             if j == 0:
                 # Root joint
@@ -184,8 +184,8 @@ def get_anim_data(anim_prim):
                 parent_index = find_parent_index(joint, joints)
                 parent_matrix = local_matrices[parent_index]
                 global_matrix = parent_matrix * matrix
-                if time ==10 and j ==1:
-                    print(f"global matrix joint 1 in 10 frame: {global_matrix}")
+                # if time ==10 and j ==1:
+                #     print(f"global matrix joint 1 in 10 frame: {global_matrix}")
                 local_matrices.append(global_matrix)
 
         global_matrices[time] = local_matrices
@@ -217,10 +217,11 @@ def import_skel_anim(stage,skeleton,anim_prim):
     set_up_skel_anim(all_frames_matrice,point_positions_list,poly_point_indices,point_transforms_list,joints_children,joints_relationship_dict)
 
 def import_usd():
-    usd_file_path = "E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/houdini_export_81.usda"
+    usd_file_path = "E:/CAVE/final/mscProject/usdaFiles/houdiniPyOutput/export_character_anim.usda"
     stage = Usd.Stage.Open(usd_file_path)
     skeleton = "/Model/Skel"
     anim = "/Model/Skel/Anim"
     anim_prim = stage.GetPrimAtPath(anim)
     import_skel_anim(stage,skeleton,anim_prim)
+    
 import_usd()
