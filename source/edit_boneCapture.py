@@ -39,9 +39,6 @@ for joint_index in joint_indices_disorder:
     new_index = pCaptPath.index(joints_usd_list[joint_index])
     joint_indices.append(float(new_index))
 # print(f"right skinning order: {joint_indices}")# except: 1,1,1,1, 2,2,2,2, 0,0,0,0 # right skinning order: [1, 1, 1, 1, 2, 2, 2, 2, 0, 0, 0, 0]
-# TODO： 最后全部赋值 
-
-        # GetJointWeightsAttr() GetJointWeightsPrimvar()
 
 bone_capture_data = list(zip(joint_indices, joint_weights))
 bone_capture_attr_name = 'boneCapture'
