@@ -11,7 +11,6 @@ This tool automates the conversion of character animations between Houdini and U
 
 ## Installation
 
-TODO:调整网址
 
 1. **Clone the repository**:
    ```bash
