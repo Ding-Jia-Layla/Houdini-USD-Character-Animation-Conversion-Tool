@@ -15,8 +15,10 @@ TODO:调整网址
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/houdini-usd-animation-tool.git
+   git clone https://github.com/Ding-Jia-Layla/Houdini-USD-Character-Animation-Conversion-Tool
    ```
+   **Or Just download HDA files from the `HDA/` directory**
+    
 2. **Install HDA files**:
    - Ensure you have Python 3.x and Houdini 18.5 or higher installed.
    - Navigate to the HDA folder directory and install the HDA files contained within. Place the HDA File into the otls Directory:
