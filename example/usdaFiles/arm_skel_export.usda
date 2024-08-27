@@ -1,0 +1,46 @@
+#usda 1.0
+(
+    defaultPrim = "Model"
+    endTimeCode = 10
+    metersPerUnit = 0.01
+    startTimeCode = 1
+    upAxis = "Y"
+)
+
+def SkelRoot "Model" (
+    prepend apiSchemas = ["SkelBindingAPI"]
+    kind = "component"
+)
+{
+    def Skeleton "Skel" (
+        prepend apiSchemas = ["SkelBindingAPI"]
+    )
+    {
+        uniform matrix4d[] bindTransforms = [
+        ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1) ), 
+        ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 2, 1) ), 
+        ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 4, 1) ),
+        ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 6, 1) )]
+        uniform token[] joints = ["arm_Shoulder", "arm_Shoulder/arm_Elbow", "arm_Shoulder/arm_Elbow/arm_Hand","arm_Shoulder/arm_Elbow/arm_Hand/arm_End"]
+        uniform matrix4d[] restTransforms = [
+        ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 0, 1) ), 
+        ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 2, 1) ), 
+        ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 2, 1) ),
+        ( (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (0, 0, 2, 1) )]
+        rel skel:animationSource = </Model/Skel/Anim>
+# local
+        def SkelAnimation "Anim"
+        {
+            uniform token[] joints = ["arm_Shoulder", "arm_Shoulder/arm_Elbow", "arm_Shoulder/arm_Elbow/arm_Hand","arm_Shoulder/arm_Elbow/arm_Hand/arm_End"]
+            quatf[] rotations.timeSamples = {
+                1: [(1, 0, 0, 0), (1, 0, 0, 0), (1, 0, 0, 0),(1, 0, 0, 0)],
+
+                10: [(1, 0, 0, 0), (0.72589976, 0.6878005, 0, 0), (0.72589976, 0.6878005, 0, 0),(1,0,0,0)],
+            }
+            half3[] scales =  [(1, 1, 1), (1, 1, 1), (1, 1, 1), (1, 1, 1)]
+            # float3[] translations = [(0, 0, 0), (0, 0, 2), (0, 0, 2),(0,0,2)]
+            float3[] translations = [(0, 0, 0), (0, 0, 2), (0, 0, 2),(0,0,2)]
+        }
+    }
+}
+
